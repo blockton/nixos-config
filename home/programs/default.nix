@@ -6,5 +6,6 @@
     ./lazygit
     ./git
     ./gpg
+    ./alacritty
   ];
 }
