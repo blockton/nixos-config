@@ -15,3 +15,8 @@ update:
     @echo -e "\n➤ Updating . . ."
     nix flake update
     @echo -e "\n\n✔ Flake updated!"
+
+clean:
+    @echo -e "\n➤ Cleaning . . ."
+    sudo nix-collect-garbage --delete-older-than "3d"
+    @echo -e "\n\n✔ Garbage collected!"

@@ -4,6 +4,9 @@
   };
 
   environment.systemPackages = with pkgs; [
+    nh
+    nvd
     home-manager
+    nix-output-monitor
   ];
 }
