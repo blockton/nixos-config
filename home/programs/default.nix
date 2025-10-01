@@ -1,11 +1,10 @@
 { ... }:
 {
   imports = [
-    ./shell
-    ./kitty
-    ./lazygit
     ./git
     ./gpg
+    ./shell
+    ./lazygit
     ./alacritty
   ];
 }
