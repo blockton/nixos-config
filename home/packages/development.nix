@@ -8,5 +8,6 @@
 ++ (with pkgs; [
   nil # Nix language server
   just # Justfile runner
+  ngrok #ngrok tunneling tool
   nixpkgs-fmt # Nix formatting
 ])
