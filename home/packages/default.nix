@@ -5,13 +5,12 @@ let
     ./cli.nix
     ./cool.nix
     ./fonts.nix
+    ./gnome.nix
     ./utilities.nix
     ./multimedia.nix
     ./networking.nix
     ./development.nix
     ./applications.nix
-    
-    
   ];
 in
 
