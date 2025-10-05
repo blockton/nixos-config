@@ -20,3 +20,8 @@ clean:
     @echo -e "\n➤ Cleaning . . ."
     sudo nix-collect-garbage --delete-older-than "3d"
     @echo -e "\n\n✔ Garbage collected!"
+
+format:
+    @echo -e "\n➤ Formatting . . ."
+    @nix run nixpkgs#time -- -f "⏱ Completed in %E" fd -e nix -X nixfmt --strict
+    @echo "\n\n✔ Formatting passed!"
