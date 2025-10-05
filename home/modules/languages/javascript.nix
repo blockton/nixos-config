@@ -160,7 +160,6 @@ in
       emmet-language-server # Emmet support for HTML/CSS
       tailwindcss-language-server # Tailwind CSS language server
 
-
       # Build tools and bundlers
       vite # Next generation frontend tooling
       esbuild # Extremely fast JavaScript bundler

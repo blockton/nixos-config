@@ -1,8 +1,4 @@
-{ 
-  pkgs,
-  pkgs-stable,
-  ... 
-}:
+{ pkgs, pkgs-stable, ... }:
 
 with pkgs;
 [
@@ -10,6 +6,6 @@ with pkgs;
   chromium
   protonvpn-gui
   pkgs.texlivePackages.wallpaper
-  pkgs-stable.termius 
+  pkgs-stable.termius
   telegram-desktop
 ]

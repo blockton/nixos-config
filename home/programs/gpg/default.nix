@@ -1,8 +1,4 @@
-{
-  pkgs-stable,
-  lib,
-  ...
-}:
+{ pkgs-stable, lib, ... }:
 
 {
   programs.gpg = {

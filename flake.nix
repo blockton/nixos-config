@@ -13,7 +13,14 @@
 
   };
 
-  outputs = { self, nixpkgs, nixpkgs-stable, home-manager, ... }@inputs:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      nixpkgs-stable,
+      home-manager,
+      ...
+    }@inputs:
 
     let
       system = "x86_64-linux";
@@ -25,23 +32,18 @@
         inherit system;
         config.allowUnfree = true;
       };
-    in {
-    # nixos - system hostname
-    nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
-      specialArgs = {
-        inherit inputs system pkgs-stable;
+    in
+    {
+      # nixos - system hostname
+      nixosConfigurations.nixos = nixpkgs.lib.nixosSystem {
+        specialArgs = { inherit inputs system pkgs-stable; };
+        modules = [ ./nixos/configuration.nix ];
       };
-      modules = [
-        ./nixos/configuration.nix
-      ];
-    };
 
-    homeConfigurations.w = home-manager.lib.homeManagerConfiguration {
-      extraSpecialArgs = {
-        inherit inputs system pkgs-stable;
+      homeConfigurations.w = home-manager.lib.homeManagerConfiguration {
+        extraSpecialArgs = { inherit inputs system pkgs-stable; };
+        pkgs = nixpkgs.legacyPackages.${system};
+        modules = [ ./home/home.nix ];
       };
-      pkgs = nixpkgs.legacyPackages.${system};
-      modules = [ ./home/home.nix ];
     };
-  };
 }

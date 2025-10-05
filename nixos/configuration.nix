@@ -1,12 +1,11 @@
-{ inputs, ...}: {
+{ inputs, ... }:
+{
   imports = [
     ./packages.nix
     ./modules/default.nix
     ./hardware-configuration.nix
   ];
-  disabledModules = [
-    ./modules/xserver.nix
-  ];
+  disabledModules = [ ./modules/xserver.nix ];
 
   services.xserver.displayManager.gdm.enable = true;
   services.xserver.desktopManager.gnome.enable = true;

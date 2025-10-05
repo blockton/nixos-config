@@ -1,7 +1,7 @@
 { pkgs-stable, ... }:
 
 (with pkgs-stable; [
-  gnome-tweaks 
+  gnome-tweaks
   gnome-clocks
   gnome-software
   gnome-calendar

@@ -1,18 +1,17 @@
-{
-  pkgs,
-  pkgs-stable,
-  ...
-}:
+{ pkgs, pkgs-stable, ... }:
 
 {
-  imports = [ ./programs ./modules ];
+  imports = [
+    ./programs
+    ./modules
+  ];
 
   home = {
     username = "w";
     homeDirectory = "/home/w";
     stateVersion = "25.05";
   };
-  
+
   nixpkgs.config.allowUnfree = true;
 
   home.packages =
