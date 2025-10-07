@@ -3,8 +3,9 @@
 (with pkgs-stable; [
   gnome-tweaks
   gnome-clocks
-  gnome-software
+  dconf-editor
   gnome-calendar
+  gnome-software
   gnome-text-editor
   gnome-disk-utility
 ])
