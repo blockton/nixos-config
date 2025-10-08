@@ -1,11 +1,14 @@
 { pkgs, pkgs-stable, ... }:
 
-with pkgs;
-[
+(with pkgs; [
   vscode
   chromium
   protonvpn-gui
-  pkgs.texlivePackages.wallpaper
-  pkgs-stable.termius
   telegram-desktop
-]
+  texlivePackages.wallpaper
+])
+
+++ (with pkgs-stable; [
+  termius
+  tor-browser
+])
