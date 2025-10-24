@@ -3,6 +3,7 @@
 (with pkgs; [
   vscode
   chromium
+  claude-code
   protonvpn-gui
   telegram-desktop
   texlivePackages.wallpaper
