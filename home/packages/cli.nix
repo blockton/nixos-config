@@ -12,6 +12,7 @@ with pkgs;
   wget
   htop
   btop
+  tokei
   direnv
   onefetch
   neofetch
