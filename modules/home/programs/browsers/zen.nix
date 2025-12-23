@@ -225,7 +225,7 @@
       # Enhanced Preferences - Productivity & UX focused
       Preferences = {
         # 🏠 Homepage & Startup
-        "browser.startup.homepage" = "http://localhost:8080/development";
+        "browser.startup.homepage" = "http://localhost:8080/startpage";
         "browser.newtabpage.enabled" = false;
         "browser.startup.page" = 1; # 0=blank, 1=home, 2=last visited page, 3=resume previous session
         "browser.newtabpage.activity-stream.showSponsoredTopSites" = false;

@@ -333,7 +333,7 @@ with lib;
                         }
                         {
                           title = "My Repos";
-                          url = "https://github.com/vwh";
+                          url = "https://github.com/blockton";
                           icon = "si:github";
                         }
                         {
@@ -459,20 +459,6 @@ with lib;
                           title = "Cloudflare";
                           url = "https://dash.cloudflare.com";
                           icon = "si:cloudflare";
-                        }
-                      ];
-                    }
-                    {
-                      title = "Local Community";
-                      color = "45 95 60"; # Gruvbox yellow
-                      links = [
-                        {
-                          title = "JOSA";
-                          url = "https://josa.ngo/";
-                        }
-                        {
-                          title = "GDG Amman";
-                          url = "https://gdg.community.dev/gdg-amman/";
                         }
                       ];
                     }
