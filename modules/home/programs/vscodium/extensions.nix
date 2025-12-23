@@ -26,7 +26,7 @@ in
       arrterian.nix-env-selector
 
       # Tools
-
+      wakatime.vscode-wakatime
       # Formatters
       esbenp.prettier-vscode
 
