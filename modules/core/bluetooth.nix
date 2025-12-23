@@ -2,7 +2,7 @@
   # Bluetooth hardware configuration
   hardware.bluetooth = {
     enable = true;
-    powerOnBoot = false; # Don't auto-enable on boot to save power
+    powerOnBoot = true;
     settings = {
       General = {
         # Enable various Bluetooth profiles
