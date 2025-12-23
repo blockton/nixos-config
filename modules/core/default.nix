@@ -1,0 +1,25 @@
+{
+  imports = [
+    ./nh.nix
+    ./qmk.nix
+    ./sops.nix
+    ./user.nix
+    ./steam.nix
+    ./system.nix
+    ./xserver.nix
+    ./program.nix
+    ./wayland.nix
+    ./nixpkgs.nix
+    ./flatpak.nix
+    ./network.nix
+    ./security.nix
+    ./services.nix
+    ./hardware.nix
+    ./pipewire.nix
+    ./bongocat.nix
+    ./bluetooth.nix
+    ./bootloader.nix
+    ./environment.nix
+    ./virtualization.nix
+  ];
+}
