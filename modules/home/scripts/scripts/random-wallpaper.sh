@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+mkdir -p ~/Pictures/wallpapers/others
+if cp -r wallpapers/otherWallpaper/*/* ~/Pictures/wallpapers/others/ &&
+    ln -sf "$PWD/wallpapers/wallpaper.png" ~/Pictures/wallpapers/wallpaper; then
+else
+    echo -e "${WARN}Some wallpapers could not be copied!"
+fi
 
 wallpaper_path="$HOME/Pictures/wallpapers"
 wallpapers_folder="$HOME/Pictures/wallpapers/others"
