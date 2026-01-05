@@ -25,8 +25,8 @@
 
       "editor.scrollbar.vertical" = "visible";
       "editor.scrollbar.horizontal" = "visible";
-      "editor.scrollbar.verticalScrollbarSize" = 2;
-      "editor.scrollbar.horizontalScrollbarSize" = 2;
+      "editor.scrollbar.verticalScrollbarSize" = 14;
+      "editor.scrollbar.horizontalScrollbarSize" = 15;
 
       "files.autoSave" = "onWindowChange";
       "files.insertFinalNewline" = true;
