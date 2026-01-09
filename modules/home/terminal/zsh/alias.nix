@@ -37,6 +37,7 @@
       # python
       piv = "python -m venv .venv";
       psv = "source .venv/bin/activate";
+      pgv = "source ~/global/bin/activate";
     };
   };
 }
