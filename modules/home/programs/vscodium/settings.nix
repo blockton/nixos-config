@@ -30,6 +30,7 @@
 
       "files.autoSave" = "onWindowChange";
       "files.insertFinalNewline" = true;
+      "explorer.confirmDelete" = false;
 
       # C/C++
       "clangd.arguments" = [
