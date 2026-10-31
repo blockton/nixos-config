@@ -1,0 +1,10 @@
+#=====================================================================#
+# OMP - OH MY PI CODING AGENT
+#=====================================================================#
+{
+  inputs,
+  pkgs,
+  ...
+}: {
+  home.packages = [inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.omp];
+}

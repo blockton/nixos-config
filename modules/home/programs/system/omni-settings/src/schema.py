@@ -201,6 +201,8 @@ PAGES = {
     "OpenCode": ("cloudai", "vcs-branch-symbolic",
                  "OpenCode, the coding agent, in the terminal and as a desktop app.",
                  [("", "", ["opencode.enable", "opencodeDesktop.enable"])]),
+    "OMP": ("cloudai", "utilities-terminal-symbolic", "Oh My Pi coding agent for the terminal.",
+            [("", "", ["omp.enable"])]),
     "Tools": ("localai", "utilities-terminal-symbolic",
               "The local model server and the app that downloads models.",
               [("", "", ["llamaSwap.enable", "lmstudio.enable", "openWebui.enable"])]),

@@ -92,6 +92,8 @@
     nix-flatpak.url = "github:gmodena/nix-flatpak"; # has no nixpkgs input
     # Own nixpkgs: following ours misses claude-code.cachix.org
     claude-code.url = "github:sadjow/claude-code-nix";
+    # Own nixpkgs: matches Numtide's binary cache
+    llm-agents.url = "github:numtide/llm-agents.nix";
     # Source only: ai/claude-desktop.nix builds its package.nix with our pkgs
     claude-desktop = {
       url = "github:kubastick/claude-desktop-nixos";
