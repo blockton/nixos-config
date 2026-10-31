@@ -53,6 +53,8 @@
   "browsers.mullvad": {"summary": "Mullvad and Tor's browser", "icon": ["mullvad-browser"], "text": "**Mullvad Browser**, made by the Tor Project and Mullvad to make its users hard for trackers to tell apart, without Tor's network. Works with or without a VPN."},
   "browsers.helium": {"summary": "Also opens app pages", "icon": ["helium", "net.imput.helium"], "text": "**Helium** browser. It also opens the Syncthing and Suwayomi pages as app windows."},
   "browsers.ferdium": {"summary": "Web messengers in one window", "icon": ["ferdium"], "text": "All your web messengers in one window with **Ferdium**; you pick the services inside the app."},
+  "messengers.telegram": {"summary": "Desktop messaging app", "icon": ["org.telegram.desktop"], "text": "**Telegram Desktop**, Telegram's desktop messaging client."},
+  "messengers.ayugram": {"summary": "Telegram with Ghost Mode", "icon": ["com.ayugram.desktop"], "text": "**AyuGram**, a customizable Telegram client with Ghost Mode."},
   "terminals.kitty": {"summary": "Fast terminal drawn on the GPU", "icon": ["kitty"], "text": "**Kitty** terminal. The file manager's \"open in terminal\" entry opens Kitty."},
   "terminals.ghostty": {"summary": "Themed terminal", "icon": ["com.mitchellh.ghostty"], "text": "**Ghostty**, a terminal themed like the rest of the desktop. Pick which terminal runs terminal programs under Default Apps."},
   "editors.helix": {"summary": "Modal editor for the terminal", "icon": ["helix", "com.helix_editor.Helix"], "text": "**Helix**, a modal terminal editor: select text, then act on it. Space opens its command menu; hx --tutor teaches it. Adds Space w to save, Space q to quit and jk to leave insert mode."},
@@ -112,6 +114,7 @@
   "dev.node": {"title": "Node.js", "summary": "JavaScript runtime with npm", "icon": ["nodejs", "text-x-javascript"], "text": "**Node.js** with **npm** and **npx**."},
   "dev.tools": {"title": "Developer tools", "summary": "gdb, make, lazygit and more", "icon": ["utilities-terminal"], "text": "**gdb** debugger, **make**, **lazygit** (a terminal UI for git), **onefetch** (a repo summary) and **ilspycmd** (decompiles .NET assemblies)."},
   "system.resources": {"summary": "System and process monitor", "icon": ["org.gnome.Resources.desktop", "utilities-system-monitor"], "text": "**Resources**, a system and process monitor: what's running and how much it uses."},
+  "system.termius": {"summary": "SSH client with cloud sync", "icon": ["termius-app"], "text": "**Termius**, a cross-platform SSH client with cloud data sync."},
   "scrcpy.enable": {"title": "scrcpy", "summary": "Control an Android device", "icon": ["guiscrcpy", "scrcpy.desktop"], "text": "Show and control an **Android** phone or tablet from your computer, over USB or wifi. Nothing gets installed on the device."},
   "androidDev.enable": {"title": "Android development", "summary": "adb, Flutter and Gradle", "icon": ["android-studio", "phone"], "note": "adb is installed for everyone on this computer", "text": "**adb** and **fastboot** for talking to a phone or tablet over USB, **Universal Android Debloater**, and **Flutter** and **Gradle** with the Android SDK paths set to `~/Android/Sdk`."},
 

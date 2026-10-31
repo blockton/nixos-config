@@ -396,7 +396,7 @@ Most of what's below is optional: apps are switched on per person in `users/<nam
 | **Audio** | [Reaper][reaper] (DAW, with [SWS][sws] and [ReaPack][reapack]) |
 | **Guitar** | [TONE3000][tone3000] (official NAM player, browses its capture and IR library in-app), [Guitarix][guitarix] (modular amp rig), [ir.lv2][ir-lv2] for cabinet IRs, [qpwgraph][qpwgraph] for patching, plus [FxFloorBoard][katana-fxfloorboard] to edit patches on the Boss Katana itself |
 | **Rhythm Games** | [feedBack][feedback] plays Guitar Pro tabs through its own audio engine, with VST hosting and amp modeling, so the Katana DI feed doubles as the game input; wrapped from the upstream AppImage with `appimageTools`, since it is not in nixpkgs. [Rocksmith 2014][rocksmith] runs on Proton and reads the same DI through [PipeASIO][pipeasio] and [RS_ASIO][rs-asio]; the module writes their config, and the hand-done install steps live in `docs/personal/gaming/rocksmith-2014.md` |
-| **Chat / Productivity** | [GoofCord][goofcord] or [Vesktop][vesktop] (follows the shell's theme live) via [nixcord][nixcord] (Vencord, with [arRPC][arrpc] running alongside it so Steam and Proton games show up as rich presence), [Ferdium][ferdium] (all your web messengers in one window), [Thunderbird][thunderbird], [Obsidian][obsidian] |
+| **Chat / Productivity** | [GoofCord][goofcord] or [Vesktop][vesktop] (follows the shell's theme live) via [nixcord][nixcord] (Vencord, with [arRPC][arrpc] running alongside it so Steam and Proton games show up as rich presence), [Ferdium][ferdium] (all your web messengers in one window), [Telegram Desktop][telegram], [AyuGram][ayugram], [Termius][termius], [Thunderbird][thunderbird], [Obsidian][obsidian] |
 | **AI Tooling** | [Claude Code][claude-code], [Claude Desktop][claude-desktop], [OpenCode][opencode], [OpenCode Desktop][opencode-desktop], [LM Studio][lmstudio], [llama-swap][llama-swap], [Open WebUI][open-webui] |
 | **Android** | [scrcpy][scrcpy] (mirror and control a device over USB or wifi, nothing to install on the phone), [Flutter][flutter] and [Gradle][gradle] with adb |
 | **Video Trimming** | [Video Trimmer][video-trimmer] (cut a clip out of a video without re-encoding it), [Constrict][constrict] (re-encode a video to fit a chosen file size) |
@@ -527,6 +527,9 @@ Most of what's below is optional: apps are switched on per person in `users/<nam
 [vesktop]: https://github.com/Vencord/Vesktop
 [nixcord]: https://github.com/KaylorBen/nixcord
 [ferdium]: https://ferdium.org
+[telegram]: https://desktop.telegram.org/
+[ayugram]: https://github.com/AyuGram/AyuGramDesktop
+[termius]: https://termius.com/
 [thunderbird]: https://www.thunderbird.net
 [obsidian]: https://obsidian.md
 [scrcpy]: https://github.com/Genymobile/scrcpy

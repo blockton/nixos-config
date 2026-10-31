@@ -48,6 +48,12 @@
     ferdium = false; # Web messengers in one window (services set in-app)
   };
 
+  #--- Messaging
+  messengers = {
+    telegram = true;
+    ayugram = true; # Telegram client with Ghost Mode
+  };
+
   #--- Terminal Selection
   terminals = {
     kitty = true;
@@ -147,6 +153,7 @@
   #--- System Tools Selection
   system = {
     resources = true; # GNOME system and process monitor
+    termius = true; # SSH client with cloud sync
   };
 
   #--- Fun

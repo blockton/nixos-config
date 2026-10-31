@@ -55,6 +55,9 @@ user: {lib, ...}: {
     ++ lib.optionals user.browsers.mullvad [./browsers/mullvad.nix]
     ++ lib.optionals user.browsers.helium [./browsers/helium.nix]
     ++ lib.optionals user.browsers.ferdium [./browsers/ferdium.nix]
+    #--- Messaging (controlled by user settings)
+    ++ lib.optionals user.messengers.telegram [./messaging/telegram.nix]
+    ++ lib.optionals user.messengers.ayugram [./messaging/ayugram.nix]
     #--- Editors (controlled by user settings)
     ++ lib.optionals user.editors.helix [./editors/helix.nix]
     ++ lib.optionals user.editors.zed [./editors/zed.nix]
@@ -105,6 +108,7 @@ user: {lib, ...}: {
     ++ lib.optionals user.security.keepassxc [./security/keepassxc.nix]
     #--- System Tools (controlled by user settings)
     ++ lib.optionals user.system.resources [./system/resources.nix]
+    ++ lib.optionals user.system.termius [./system/termius.nix]
     #--- Terminal toys (controlled by user settings)
     ++ lib.optionals user.fun.cmatrix [./fun/cmatrix.nix]
     ++ lib.optionals user.fun.figlet [./fun/figlet.nix]
