@@ -51,6 +51,7 @@ user: {lib, ...}: {
     ++ lib.optionals user.fileBrowsers.yazi [./file-browsers/yazi.nix]
     ++ lib.optionals user.fileBrowsers.duxFiles [./file-browsers/dux-files.nix]
     #--- Browsers (controlled by user settings)
+    ++ lib.optionals user.browsers.firefox [./browsers/firefox.nix]
     ++ lib.optionals user.browsers.zen [./browsers/zen]
     ++ lib.optionals user.browsers.mullvad [./browsers/mullvad.nix]
     ++ lib.optionals user.browsers.helium [./browsers/helium.nix]

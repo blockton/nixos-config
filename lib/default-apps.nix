@@ -14,6 +14,7 @@
 in rec {
   apps = {
     browser = [
+      (browser "firefox" ["browsers" "firefox"] "firefox.desktop" "firefox")
       (browser "zen" ["browsers" "zen"] "zen-beta.desktop" "zen-beta")
       (browser "mullvad" ["browsers" "mullvad"] "mullvad-browser.desktop" "mullvad-browser")
       (browser "helium" ["browsers" "helium"] "helium.desktop" "helium")

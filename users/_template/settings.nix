@@ -42,6 +42,7 @@
 
   #--- Browser Selection
   browsers = {
+    firefox = false; # Mozilla web browser
     zen = true;
     mullvad = false;
     helium = false;

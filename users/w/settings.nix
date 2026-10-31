@@ -34,7 +34,7 @@
   # Which app opens web links, text files, terminal programs and folders. One
   # that's turned off below is skipped for the first of its kind that's on.
   defaultApps = {
-    browser = "zen";
+    browser = "firefox";
     textEditor = "zed";
     terminal = "kitty";
     fileManager = "nautilus";
@@ -42,6 +42,7 @@
 
   #--- Browser Selection
   browsers = {
+    firefox = true; # Mozilla web browser
     zen = true;
     mullvad = true;
     helium = true;
@@ -180,7 +181,7 @@
   #--- Gaming
   gaming = {
     # Launchers
-    steam = true; # NixOS programs.steam
+    steam = false; # NixOS programs.steam
     heroic = false; # Epic / GOG / Amazon
     prismlauncher = false; # Minecraft
     lutris = false; # Wine launcher

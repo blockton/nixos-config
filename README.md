@@ -383,7 +383,7 @@ Most of what's below is optional: apps are switched on per person in `users/<nam
 
 | | |
 | --- | --- |
-| **Browsers** | [Zen][zen] / [Mullvad Browser][mullvad-browser] / [Helium][helium] |
+| **Browsers** | [Firefox][firefox] / [Zen][zen] / [Mullvad Browser][mullvad-browser] / [Helium][helium] |
 | **File Manager** | [Nautilus][nautilus] (with an open-in-Kitty menu entry from [nautilus-open-any-terminal][nautilus-open-any-terminal]), [Dolphin][dolphin] (optional, colored from the shell's theme, with [Ark][ark] for archives and a Convert Media menu entry using [FFmpeg][ffmpeg]), [Yazi][yazi] (terminal file manager), [Dux Files][dux-files] (standalone file manager from Dux Labs) |
 | **Media Player** | [mpv][mpv], [Spotify][spotify] via [spicetify-nix][spicetify], [FreeTube][freetube], [yt-dlp][yt-dlp] (downloader), [ani-cli][ani-cli] (anime in mpv) |
 | **Twitch** | [Streamlink Twitch GUI][streamlink-twitch-gui] browses Twitch and hands the stream to [Streamlink][streamlink], which plays it in mpv, so there are no ads and the follow list stays local with no Twitch account attached; wrapped from the upstream AppImage with `appimageTools`, since it is not in nixpkgs |
@@ -492,6 +492,7 @@ Most of what's below is optional: apps are switched on per person in `users/<nam
 [helix]: https://helix-editor.com
 [micro]: https://micro-editor.github.io
 [vscodium]: https://github.com/VSCodium/vscodium
+[firefox]: https://www.mozilla.org/firefox/
 [zen]: https://zen-browser.app
 [mullvad-browser]: https://mullvad.net/en/browser
 [helium]: https://github.com/schembriaiden/helium-browser-nix-flake

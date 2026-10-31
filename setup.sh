@@ -780,6 +780,7 @@ detect_gpu() {
 #--- Optional apps (users/_template/settings.nix has the rest off too). The
 #--- ~/.local/opt bundles aren't offered: the repo can't supply them.
 apps=(
+  "Browsers|browsers.firefox|Firefox"
   "Browsers|browsers.mullvad|Mullvad Browser"
   "Browsers|browsers.helium|Helium (also opens the Syncthing and Suwayomi pages)"
   "Browsers|browsers.ferdium|Ferdium: web messengers in one window"
