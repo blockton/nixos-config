@@ -24,6 +24,7 @@
   #--- pkexec rather than sudo, so the password prompt is DMS's polkit dialog
   #--- (wm/dms-polkit) whether or not a terminal is attached
   environment.variables.NH_ELEVATION_STRATEGY = "pkexec";
+  security.polkit.enablePkexecWrapper = true;
   #--- nh calls pkexec up to three times per switch; keeping the authorization
   #--- for the calling process (as sudo's timestamp does) makes that one prompt
   security.polkit.extraConfig = ''
