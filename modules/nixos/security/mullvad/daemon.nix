@@ -26,7 +26,7 @@
       socialMedia = true; # also blocks t.co links and embedded tweets
     };
 
-    lockdownMode = true; # kill switch: no traffic while the tunnel is down
+    lockdownMode = false; # kill switch: no traffic while the tunnel is down
     autoConnect = true; # daemon dials as soon as it starts
     lan = "allow"; # "block" to drop LAN traffic before the firewall sees it
     quantumResistant = "on";
@@ -35,8 +35,8 @@
     #--- directOnly makes a non-DAITA relay fail instead of silently
     #--- inserting a multihop entry behind your back.
     daita = {
-      enable = true;
-      directOnly = true;
+      enable = false;
+      directOnly = false;
     };
   };
 
