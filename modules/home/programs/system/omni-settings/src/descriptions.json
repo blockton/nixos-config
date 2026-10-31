@@ -214,6 +214,10 @@
   "opencode.enable": {"summary": "Open-source coding agent", "text": "**opencode**, an open-source coding agent for the terminal that works with many model providers, local ones included. Sharing chats to opencode.ai is turned off."},
   "opencodeDesktop.enable": {"summary": "OpenCode's desktop app", "icon": ["opencode-desktop"], "text": "**OpenCode Desktop**, OpenCode's own desktop app: a Claude Desktop-style GUI that runs the same server and shares your chats and config with the **opencode** terminal agent."},
   "omp.enable": {"summary": "Multi-model coding agent", "text": "**OMP**, an Oh My Pi terminal coding agent with multi-model support."},
+  "chatgpt.enable": {"title": "ChatGPT", "summary": "Desktop app with Codex", "text": "The **ChatGPT** desktop app with **Codex**."},
+  "codex.enable": {"summary": "OpenAI coding agent", "text": "**Codex**, an OpenAI coding agent that runs locally in the terminal."},
+  "mimo.enable": {"title": "MiMo Code", "summary": "Cross-session memory", "text": "**MiMo Code**, an open-source coding agent with cross-session memory."},
+  "zcode.enable": {"title": "ZCode", "summary": "Agentic development environment", "icon": ["zcode"], "text": "**ZCode**, an agentic development environment by Z.ai."},
   "lmstudio.enable": {"summary": "Run models locally", "icon": ["ai.elementlabs.lmstudio.desktop"], "text": "**LM Studio** downloads open language models and runs them on this computer, with a chat window and a local server other apps can talk to."},
 
   "japanese.ime": {"title": "Japanese Typing", "summary": "Type hiragana and kanji", "icon": ["mozc", "fcitx"], "text": "Type Japanese (hiragana, katakana and kanji) with **fcitx5** and **Mozc**."},

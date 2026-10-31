@@ -242,9 +242,13 @@
   claude.builtins.agentsMdFiles = "claude-md-or-agents-md"; # Files it loads
   claudeDesktop.enable = false; # Claude desktop app: chat and Claude Code
   claudeDesktop.matugen = false; # Claude desktop app in your wallpaper's colours
+  chatgpt.enable = false; # ChatGPT desktop app with Codex
+  codex.enable = false; # OpenAI coding agent
+  mimo.enable = false; # Coding agent with cross-session memory
   opencode.enable = false;
   opencodeDesktop.enable = false; # OpenCode's desktop app: a Claude Desktop-style GUI
   omp.enable = false; # Oh My Pi coding agent
+  zcode.enable = false; # Z.ai agentic development environment
   lmstudio.enable = false; # Runs language models locally
   llamaSwap.enable = false; # llama.cpp server on the GPU, opencode's default model
   openWebui.enable = false; # Chat with llama-swap's models in the browser

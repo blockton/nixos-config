@@ -240,11 +240,15 @@
   claude.builtins.youShouldKnow = false; # Built-in "you should know" plugin
   claude.builtins.agentsMd = true; # Built-in plugin that reads AGENTS.md files
   claude.builtins.agentsMdFiles = "claude-md-or-agents-md"; # Files it loads
-  claudeDesktop.enable = false; # Claude desktop app: chat and Claude Code
+  claudeDesktop.enable = true; # Claude desktop app: chat and Claude Code
   claudeDesktop.matugen = false; # Claude desktop app in your wallpaper's colours
+  chatgpt.enable = true; # ChatGPT desktop app with Codex
+  codex.enable = true; # OpenAI coding agent
+  mimo.enable = true; # Coding agent with cross-session memory
   opencode.enable = true;
   opencodeDesktop.enable = false; # OpenCode's desktop app: a Claude Desktop-style GUI
   omp.enable = true; # Oh My Pi coding agent
+  zcode.enable = true; # Z.ai agentic development environment
   lmstudio.enable = false; # Runs language models locally
   llamaSwap.enable = false; # llama.cpp server on the GPU, opencode's default model
   openWebui.enable = false; # Chat with llama-swap's models in the browser
