@@ -38,7 +38,7 @@
 
   #--- Where this repo is cloned; null means /etc/nixos-config, which every
   #--- admin can edit (setup.sh moves it there)
-  flakePath = "/home/w/Templates/nixos-config";
+  flakePath = null;
 
   #--- Window Manager Selection, for everyone on this machine
   # Options: "niri"
