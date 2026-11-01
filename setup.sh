@@ -833,6 +833,7 @@ apps=(
   "Dev|dev.rust|Rust (rustup)"
   "Dev|dev.go|Go"
   "Dev|dev.node|Node.js"
+  "Dev|dev.python|Python and uv"
   "Dev|dev.tools|gdb, make, lazygit, onefetch, ilspycmd"
   "System|scrcpy.enable|scrcpy: show and control an Android phone"
   "System|androidDev.enable|Android development: adb, Flutter, Gradle"

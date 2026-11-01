@@ -113,6 +113,7 @@
   "dev.rust": {"title": "Rust", "summary": "Rust through rustup", "icon": ["rust", "text-x-rust"], "text": "**rustup** installs and switches Rust toolchains. Run `rustup default stable` once to download one; tools from `cargo install` land on your PATH."},
   "dev.go": {"title": "Go", "summary": "The Go compiler and tools", "icon": ["text-x-go", "text-x-script"], "text": "**Go**, with `go build`, `go run` and the rest of its tools."},
   "dev.node": {"title": "Node.js", "summary": "JavaScript runtime with npm", "icon": ["nodejs", "text-x-javascript"], "text": "**Node.js** with **npm** and **npx**."},
+  "dev.python": {"title": "Python", "summary": "Python and uv package manager", "icon": ["text-x-python", "python"], "text": "**Python** and **uv**, for creating projects, virtual environments and installing Python packages."},
   "dev.tools": {"title": "Developer tools", "summary": "gdb, make, lazygit and more", "icon": ["utilities-terminal"], "text": "**gdb** debugger, **make**, **lazygit** (a terminal UI for git), **onefetch** (a repo summary) and **ilspycmd** (decompiles .NET assemblies)."},
   "system.resources": {"summary": "System and process monitor", "icon": ["org.gnome.Resources.desktop", "utilities-system-monitor"], "text": "**Resources**, a system and process monitor: what's running and how much it uses."},
   "system.termius": {"summary": "SSH client with cloud sync", "icon": ["termius-app"], "text": "**Termius**, a cross-platform SSH client with cloud data sync."},

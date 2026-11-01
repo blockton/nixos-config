@@ -118,6 +118,7 @@ user: {lib, ...}: {
     ++ lib.optionals user.dev.rust [./dev/rust.nix]
     ++ lib.optionals user.dev.go [./dev/go.nix]
     ++ lib.optionals user.dev.node [./dev/node.nix]
+    ++ lib.optionals user.dev.python [./dev/python.nix]
     ++ lib.optionals user.dev.tools [./dev/tools.nix]
     #--- Android mirroring and development (controlled by user settings)
     ++ lib.optionals user.scrcpy.enable [./android/scrcpy.nix]

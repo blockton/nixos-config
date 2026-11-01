@@ -169,6 +169,7 @@
     rust = false; # Rust through rustup; run `rustup default stable` once
     go = false; # Go compiler and tools
     node = false; # Node.js and npm
+    python = false; # Python and uv package manager
     tools = false; # gdb, make, lazygit, onefetch, ilspycmd
   };
 

@@ -373,7 +373,7 @@ Most of what's below is optional: apps are switched on per person in `users/<nam
 | --- | --- |
 | **Editors / IDE** | [Zed][zed], [Helix][helix], [VSCodium][vscodium], [micro][micro] (quick edits) |
 | **Terminal Toys** | [cmatrix][cmatrix], [figlet][figlet], [ttyper][ttyper] (typing test) |
-| **Developer Tools** | [Rust][rustup] through rustup, [Go][go], Node.js, gdb, make, [lazygit][lazygit], onefetch and ilspycmd |
+| **Developer Tools** | [Rust][rustup] through rustup, [Go][go], Node.js, [Python][python] with [uv][uv], gdb, make, [lazygit][lazygit], onefetch and ilspycmd |
 | **Formatter** | [alejandra][alejandra] |
 | **Rebuild Wrapper** | [`nixm`](./modules/home/nixm.nix) (fzf menu over [nh][nh]) |
 </details>
@@ -488,6 +488,8 @@ Most of what's below is optional: apps are switched on per person in `users/<nam
 [ani-cli]: https://github.com/pystardust/ani-cli
 [rustup]: https://www.rustup.rs/
 [go]: https://go.dev/
+[Python]: https://www.python.org
+[uv]: https://github.com/astral-sh/uv
 [lazygit]: https://github.com/jesseduffield/lazygit
 [helix]: https://helix-editor.com
 [micro]: https://micro-editor.github.io
