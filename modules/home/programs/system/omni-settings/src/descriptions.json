@@ -202,6 +202,7 @@
   "claude.skills.todo": {"title": "todo", "summary": "Keeps the notes in docs/todo"},
   "claude.skills.upstream": {"title": "upstream", "summary": "Syncs a fork both ways", "text": "Syncs a fork with this repo or sends changes back."},
   "claude.skills.vnSetup": {"title": "vn-setup", "summary": "Upscales a visual novel", "text": "Sets up a visual novel with upscaling."},
+  "claude.skills.kurigramTelegramBot": {"title": "kurigram-telegram-bot", "summary": "Builds Telegram bots with Kurigram", "text": "Builds, debugs and maintains Python Telegram bots using Kurigram, including handlers, media, Rich Messages and raw MTProto."},
   "claude.agents.buildTriager": {"title": "build-triager", "summary": "Reports what failed to build", "text": "Builds a machine and reports only what failed."},
   "claude.agents.docsDriftAuditor": {"title": "docs-drift-auditor", "summary": "Checks the docs match", "text": "Checks the docs still match the repo."},
   "claude.agents.proseReviewer": {"title": "prose-reviewer", "summary": "Trims prose to the style", "text": "Trims prose to the repo's writing style."},

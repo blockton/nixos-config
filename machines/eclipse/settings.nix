@@ -80,6 +80,7 @@
       claude.skills.todo = "on";
       claude.skills.upstream = "on";
       claude.skills.vnSetup = "on";
+      claude.skills.kurigramTelegramBot = "on";
       claude.skillModels.addApp = null;
       claude.skillModels.androidDebloatRedo = null;
       claude.skillModels.apparmorCheck = null;
@@ -96,6 +97,7 @@
       claude.skillModels.todo = null;
       claude.skillModels.upstream = null;
       claude.skillModels.vnSetup = null;
+      claude.skillModels.kurigramTelegramBot = null;
       claude.agents.buildTriager = "on";
       claude.agents.docsDriftAuditor = "on";
       claude.agents.proseReviewer = "on";

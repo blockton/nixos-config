@@ -193,7 +193,8 @@ PAGES = {
                       [("Repo Skills", "", [f"claude.skills.{n}" for n in (
                           "addApp", "androidDebloatRedo", "apparmorCheck", "commit", "disablePackage",
                           "flakeUpdate", "freetubeSync", "gameTroubleshooting", "handoff", "mokuBump",
-                          "onboard", "prReview", "rpgmSetup", "todo", "upstream", "vnSetup")]),
+                          "onboard", "prReview", "rpgmSetup", "todo", "upstream", "vnSetup",
+                          "kurigramTelegramBot")]),
                        ("Subagents", "", [f"claude.agents.{n}" for n in (
                            "buildTriager", "docsDriftAuditor", "proseReviewer", "publicRepoAuditor")]),
                        ("Account Skills", "Synced from your claude.ai account.",
