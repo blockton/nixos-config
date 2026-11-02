@@ -194,7 +194,7 @@ PAGES = {
                           "addApp", "androidDebloatRedo", "apparmorCheck", "commit", "disablePackage",
                           "flakeUpdate", "freetubeSync", "gameTroubleshooting", "handoff", "mokuBump",
                           "onboard", "prReview", "rpgmSetup", "todo", "upstream", "vnSetup",
-                          "kurigramTelegramBot")]),
+                          "kurigramTelegramBot", "telegramCustomEmojiRefiner")]),
                        ("Subagents", "", [f"claude.agents.{n}" for n in (
                            "buildTriager", "docsDriftAuditor", "proseReviewer", "publicRepoAuditor")]),
                        ("Account Skills", "Synced from your claude.ai account.",

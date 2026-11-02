@@ -1,0 +1,4 @@
+interface:
+  display_name: "Telegram Custom Emoji Refiner"
+  short_description: "Refine Telegram UI with custom emojis"
+  default_prompt: "Use $telegram-custom-emoji-refiner to replace default Telegram emojis using this emoji-cache directory."
