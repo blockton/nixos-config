@@ -1,11 +1,20 @@
 #=====================================================================#
-# AGENT SKILLS - THE REPO'S SKILLS FOR OPENCODE AND ZED
+# AGENT SKILLS - SHARED REPO-LOCAL SKILLS
 #=====================================================================#
-#- Links each skill in ./skills into ~/.agents/skills, the global folder
-#- Zed's agent and opencode both read. Claude Code gets the same skills in
-#- ~/.claude/skills (claude.nix), which opencode is told to skip (opencode.nix).
-{lib, ...}: {
-  home.file = lib.mapAttrs' (name: _:
-    lib.nameValuePair ".agents/skills/${name}" {source = ./skills + "/${name}";})
-  (lib.filterAttrs (_: type: type == "directory") (builtins.readDir ./skills));
+#- Links every skill into ~/.agents/skills for Codex, ChatGPT, MiMo, OMP,
+#- OpenCode and Zed. ZCode reads ~/.zcode/skills; Claude Code uses claude.nix.
+{
+  lib,
+  user,
+  ...
+}: let
+  skills = lib.filterAttrs (_: type: type == "directory") (builtins.readDir ./skills);
+  linkSkills = directory:
+    lib.mapAttrs' (name: _:
+      lib.nameValuePair "${directory}/${name}" {source = ./skills + "/${name}";})
+    skills;
+in {
+  home.file =
+    linkSkills ".agents/skills"
+    // lib.optionalAttrs user.zcode.enable (linkSkills ".zcode/skills");
 }

@@ -136,7 +136,16 @@ user: {lib, ...}: {
     ++ lib.optionals user.lmstudio.enable [./ai/lmstudio.nix]
     ++ lib.optionals user.llamaSwap.enable [./ai/llama-swap.nix]
     ++ lib.optionals (user.claude.enable || user.opencode.enable) [./ai/mcp.nix]
-    ++ lib.optionals (user.opencode.enable || (user.editors.zed && (user.llamaSwap.enable || user.claude.enable))) [./ai/agent-skills.nix]
+    ++ lib.optionals (
+      user.chatgpt.enable
+      || user.codex.enable
+      || user.mimo.enable
+      || user.opencode.enable
+      || user.opencodeDesktop.enable
+      || user.omp.enable
+      || user.zcode.enable
+      || (user.editors.zed && (user.llamaSwap.enable || user.claude.enable))
+    ) [./ai/agent-skills.nix]
     #--- Discord (controlled by user settings)
     ++ lib.optionals (user.discord.goofcord || user.discord.vesktop) [./discord/discord.nix]
     ++ lib.optionals user.discord.arrpc.enable [./discord/arrpc.nix];
