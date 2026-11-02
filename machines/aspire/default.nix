@@ -12,8 +12,8 @@
   #--------------------------------------------------------------------#
   #-- Machine Settings
   #--------------------------------------------------------------------#
-  #--- NixOS options for this machine only go here, for example:
-  # hardware.i2c.enable = true;
+  #--- DMS's bar menu switches profiles through this system service
+  services.power-profiles-daemon.enable = true;
 
   #--------------------------------------------------------------------#
   #-- Imports
