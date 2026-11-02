@@ -80,7 +80,7 @@
   #--- setup.sh copies these from the choices made in the NixOS installer
   timeZone = "Asia/Damascus"; # e.g. "Europe/Berlin"; `timedatectl list-timezones`
   locale = "en_US.UTF-8";
-  keyboardLayout = "us"; # Desktop layout, e.g. "gb", "de", "fr"
+  keyboardLayout = "us,ara"; # Desktop layouts, comma separated
   # Same layout for the text console and the disk password prompt; a few
   # are named differently there ("uk" for "gb")
   consoleKeyMap = "us";

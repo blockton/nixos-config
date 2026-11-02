@@ -396,7 +396,14 @@
   # by bind id: {terminal = {key = "Mod+Alt+T";}; steam = {enable = false;};}.
   # Your own binds have ids starting custom-, a key, a title, and spawn (a
   # command as a list) or a niri action with an optional argument.
-  keybinds = {};
+  keybinds = {
+    custom-switch-keyboard-layout = {
+      key = "Alt+Shift";
+      title = "Switch keyboard layout";
+      action = "switch-layout";
+      argument = "next";
+    };
+  };
 
   #--- Window Rules
   # Changes to the config's niri window rules, made on Omni Settings' Window
