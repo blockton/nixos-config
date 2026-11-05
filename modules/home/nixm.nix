@@ -769,8 +769,7 @@
       esac
     '';
 in {
-  home.packages = [nixm];
-
+  home.packages = [nixm pkgs.gitleaks];
   programs.zsh.shellAliases = {
     #--- Shorthand alias for nixm script
     n = "nixm";

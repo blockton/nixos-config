@@ -159,12 +159,11 @@ in {
       };
     };
 
-    #--- gitleaks: the commit skill's secret scan
     #--- python3: the skill-creator and claude-security plugins' scripts
     #--- ruff: the edit hook's check on Omni Settings' Python
     #--- inotify-tools, pandoc, poppler-utils: File Tree's live updates and previews
     home.packages =
-      [pkgs.gitleaks pkgs.python3 pkgs.ruff]
+      [pkgs.python3 pkgs.ruff]
       ++ lib.optionals c.mods.fileTree [pkgs.inotify-tools pkgs.pandoc pkgs.poppler-utils];
 
     #--- Turn off Claude-drafted feedback (the SendFeedback tool)
