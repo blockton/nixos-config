@@ -27,7 +27,6 @@
   browsers = {
     zen = true;
     mullvad = true;
-    helium = true;
     ferdium = true; # Web messengers in one window (services set in-app)
   };
 
@@ -154,6 +153,7 @@
     tmodloader = true; # tml-prelaunch runtime patch, .NET 8 and Mono
 
     # Tools
+    omniServer = true; # Runs modded Minecraft servers, with stats and a console
     r2modman = true; # Thunderstore mod manager
     satisfactoryModManager = true; # Satisfactory mod manager
     pathOfBuilding = true; # Path of Exile build planner (Rusty PoB)
@@ -171,14 +171,13 @@
   #--- AI Tools
   claude = {
     enable = true;
-    mods.ribbon = true;
+    mods.usageBand = true;
+    mods.rebuildPrompt = true;
     mods.skins = true;
     mods.fileTree = true;
     mods.savvyProgress = true;
     mods.blastRadius = true;
     mods.replayTheater = true;
-    mods.chatInventory = true;
-    mods.screenShare = true;
     statusLine = true;
     builtins.youShouldKnow = true;
     builtins.agentsMd = false;
@@ -217,15 +216,21 @@
     enable = true;
     matugen = true;
   };
-  opencode = {enable = true;};
+  opencode = {
+    enable = true;
+    plugins = {
+      usageBar = true;
+      desktopBar = true;
+      rebuildBadge = true;
+    };
+  };
   opencodeDesktop = {enable = true;};
   lmstudio = {enable = true;};
   llamaSwap = {enable = true;};
   openWebui = {enable = true;};
   localAi = {
-    code = ["ornith-1.5-35b-a3b" "qwen3.6-35b-a3b-q4"];
+    models = ["ornith-1.5-35b-a3b" "qwen3.6-35b-a3b-q4" "gpt-oss-20b" "gemma-4-26b-a4b"];
     edit = "sweep-next-edit-1.5b";
-    chat = ["gpt-oss-20b" "gemma-4-26b-a4b"];
   };
 
   #--- Japanese Language & Game Support

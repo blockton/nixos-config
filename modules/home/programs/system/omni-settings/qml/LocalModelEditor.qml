@@ -1,0 +1,957 @@
+// Tunes one model for this machine: its localModels.models entry's tuning
+// fields over the profile's measured values, with a fit estimate that follows
+// each change (api.py's localModelEstimate), presets, and a test that runs
+// llama-server with the unsaved tuning (localModelTest).
+import QtQuick
+import QtQuick.Layouts
+
+Sheet {
+    id: ed
+    required property var view
+    required property var models  // LocalModelsPage: modelsNow, profileNow, setModel
+    required property var model  // a model from api.py's localModels
+    title: model.name
+    info: `How it loads · ${view.info.machine} · waits for Apply`
+    onBack: view.sheet = null
+
+    readonly property var tuningKeys: ["context", "cache", "gpuLayers", "cpuMoe", "batch", "cacheRam",
+                                       "fitTarget", "loadMode"]
+    property var own: ({})
+    property var fit: null  // the estimate
+    property string fitError: ""
+    property var log: []
+    property var result: null
+    property bool testing: false
+    //--- The live view: localModelTest's "@" events (localmodelstate.event)
+    property string stage: ""  // unload, load, prompt, generate, done
+    property var vramSeries: []  // 0 to 1, oldest first
+    property var ramSeries: []
+    property var mem: null  // the last {vram, vramTotal, ram, ramTotal}
+    property int tokens: 0
+    property real rate: 0
+    readonly property int maxTokens: 256  // the test prompt's max_tokens
+    // The graph stretches to fill its width as samples come in, up to 2 minutes
+    readonly property int graphSamples: Math.max(40, vramSeries.length)
+    function takeTestLine(line) {
+        if (line.startsWith("@")) {
+            let e
+            try { e = JSON.parse(line.slice(1)) } catch (err) { return }
+            if (e.event === "stage")
+                stage = e.stage
+            else if (e.event === "mem") {
+                mem = e
+                vramSeries = vramSeries.slice(-239).concat([e.vramTotal ? e.vram / e.vramTotal : 0])
+                ramSeries = ramSeries.slice(-239).concat([e.ramTotal ? e.ram / e.ramTotal : 0])
+            } else if (e.event === "quality") {
+                const q = Object.assign({}, qualityLive)
+                q[e.cache] = e
+                qualityLive = q
+            } else if (e.event === "attempt") {
+                if (e.status === "best") {
+                    bestN = e.n
+                    return
+                }
+                const list = attempts.filter(a => a.n !== e.n)
+                list.push(e)
+                attempts = list.sort((a, b) => a.n - b.n)
+                if (e.status === "running") {  // a new load: its own counters
+                    tokens = 0
+                    rate = 0
+                }
+            } else if (e.event === "tokens") {
+                tokens = e.n
+                rate = e.rate
+            }
+            return
+        }
+        log = log.slice(-199).concat([line])
+    }
+    readonly property bool unified: models.info && models.info.gpu.memory === "unified"
+    readonly property bool moe: !!fit && fit.model.moe
+
+    Component.onCompleted: {
+        own = Object.assign({}, models.modelsNow[model.id] || {})
+        estimate()
+    }
+
+    //--- A field's value: this machine's, else the profile's measured, else llama.cpp's default
+    function value(key, fallback) {
+        if (key in own)
+            return own[key]
+        if (own.gpuLayers === "auto" && key === "cpuMoe")
+            return fallback
+        return key in model.measured ? model.measured[key] : fallback
+    }
+    //--- An added model's vision projector; a hand-written --mmproj arg goes with it
+    function setVision(file) {
+        const o = Object.assign({}, own)
+        if (file)
+            o.mmproj = file
+        else
+            delete o.mmproj
+        if (Array.isArray(o.args))
+            o.args = o.args.filter(a => !/^--mmproj\b/.test(a))
+        own = o
+        result = null
+        estimateTimer.restart()
+    }
+    //--- An added model's MTP file; its draft length and any hand-written -md go with it
+    function setMtp(file) {
+        const o = Object.assign({}, own)
+        if (file) {
+            o.mtp = file
+        } else {
+            delete o.mtp
+            delete o.draftMax
+        }
+        if (Array.isArray(o.args))
+            o.args = o.args.filter(a => !/^(--spec-type|-md|--spec-draft-model)\b/.test(a))
+        own = o
+        result = null
+        estimateTimer.restart()
+    }
+    function set(key, v) {
+        const o = Object.assign({}, own)
+        if (v === undefined)
+            delete o[key]
+        else
+            o[key] = v
+        own = o
+        result = null
+        estimateTimer.restart()
+    }
+    function useTuning(t) {
+        const o = {}
+        for (const k in own)
+            if (!tuningKeys.includes(k))
+                o[k] = own[k]  // an added model's name, folder and file stay
+        own = Object.assign(o, t || {})
+        result = null
+        estimateTimer.restart()
+    }
+    function merged() {
+        const m = Object.assign({}, models.modelsNow)
+        if (Object.keys(own).length)
+            m[model.id] = own
+        else
+            delete m[model.id]
+        return { profile: models.profileNow, models: m, backend: models.backendNow }
+    }
+
+    Timer { id: estimateTimer; interval: 250; onTriggered: ed.estimate() }
+    function estimate() {
+        Backend.call("localModelEstimate", { id: model.id, localModels: merged() }, reply => {
+            if (!ed)
+                return
+            if (reply.ok) {
+                ed.fit = reply.data
+                ed.fitError = ""
+                // The last test, while these are the settings it ran with
+                if (!ed.testing)
+                    ed.result = reply.data.lastTest ? reply.data.lastTest.result : null
+                if (!ed.checking)
+                    ed.quality = reply.data.quality
+            } else
+                ed.fitError = reply.error
+        })
+    }
+    function resetLive() {
+        testing = true
+        log = []
+        result = null
+        stage = ""
+        vramSeries = []
+        ramSeries = []
+        mem = null
+        tokens = 0
+        rate = 0
+        attempts = []
+        bestN = 0
+        qualityLive = ({})
+    }
+
+    //--- The quality check (api.py's localModelQuality): KL divergence of the smaller
+    //--- context caches against full precision, saved per model
+    property var quality: null  // {basePpl, unreliable, q8_0, q4_0, at}
+    property var qualityLive: ({})  // the running check's "quality" events, by cache
+    property bool checking: false
+    property var qualityProc: null
+    property string runKind: ""  // test, tune or quality: picks the live panel's steps
+    property string cacheMode: "keep"  // Auto-Tune: keep, or quality
+    property real kldLimit: 0.01
+    readonly property var cacheNames: ({ f16: "Full", bf16: "Full", q8_0: "Half Size", q4_0: "Quarter Size" })
+    function runQuality() {
+        resetLive()
+        checking = true
+        runKind = "quality"
+        qualityProc = Backend.stream("localModelQuality", { id: model.id, localModels: merged() },
+                                     line => ed.takeTestLine(line), reply => {
+            if (!ed)
+                return
+            ed.testing = false
+            ed.checking = false
+            ed.qualityProc = null
+            if (ed.stopping) {
+                ed.stopping = false
+                ed.view.say("Quality check stopped")
+                return
+            }
+            if (reply.ok)
+                ed.quality = reply.data
+            else
+                ed.view.ask({ heading: "The quality check didn't finish", body: reply.error, cancel: false,
+                              buttons: [{ label: "OK", value: true }] }, () => {})
+        })
+    }
+    function stopQuality() {
+        if (!qualityProc)
+            return
+        stopping = true
+        qualityProc.running = false
+    }
+    function verdictTone(v) {
+        return v === "No real difference" ? "" : v === "Slightly different" ? "" : "caution"
+    }
+
+    //--- Auto-Tune (api.py's localModelAutoTune): attempts follow as "attempt" events
+    property bool tuning: false
+    property bool stopping: false
+    property var tuneProc: null
+    property string goal: "speed"
+    property int minRate: 20
+    property var attempts: []  // [{n, tuning, status, rate, prompt, vramPeak}]
+    property int bestN: 0
+    function runAutoTune() {
+        resetLive()
+        tuning = true
+        runKind = "tune"
+        tuneProc = Backend.stream("localModelAutoTune",
+                                  { id: model.id, localModels: merged(), goal, minRate, cache: cacheMode, kldLimit },
+                                  line => ed.takeTestLine(line), reply => {
+            if (!ed)
+                return
+            ed.testing = false
+            ed.tuning = false
+            ed.tuneProc = null
+            if (ed.stopping) {
+                ed.stopping = false
+                ed.view.say("Auto-Tune stopped")
+                return
+            }
+            if (reply.ok) {
+                if (ed.cacheMode === "quality" && ed.qualityLive.f16)
+                    ed.quality = null  // a check ran first: the estimate brings its saved result
+                ed.useTuning(reply.data.best)  // the estimate then shows its saved result
+                ed.view.say(`Auto-Tune picked ${ed.describe(reply.data.best)}; Save to keep it`)
+                if (reply.data.note)
+                    ed.view.say(reply.data.note)
+            } else
+                ed.view.ask({ heading: "Auto-Tune didn't finish", body: reply.error, cancel: false,
+                              buttons: [{ label: "OK", value: true }] }, () => {})
+        })
+    }
+    function stopAutoTune() {
+        if (!tuneProc)
+            return
+        stopping = true
+        tuneProc.running = false  // SIGTERM: the backend stops llama-server on its way out
+    }
+    //--- A tuning in a few words: "20 experts in RAM · 128K · batch 2048"
+    function describe(t) {
+        const where = t.cpuMoe !== undefined ? `${t.cpuMoe} experts in RAM`
+                    : t.gpuLayers === "all" || t.gpuLayers === undefined ? "all on the GPU"
+                    : `${t.gpuLayers} layers on the GPU`
+        return [where, contextLabel(t.context).replace(" tokens", ""), `batch ${t.batch || 512}`,
+                t.cache || model.cache].join(" · ")
+    }
+
+    function runTest() {
+        resetLive()
+        runKind = "test"
+        Backend.stream("localModelTest", { id: model.id, localModels: merged() },
+                       line => ed.takeTestLine(line), reply => {
+            if (!ed)
+                return
+            ed.testing = false
+            if (reply.ok) {
+                ed.result = reply.data
+                ed.estimate()  // picks up the saved test's date
+            } else
+                ed.view.ask({ heading: "The test didn't finish", body: reply.error, cancel: false,
+                              buttons: [{ label: "OK", value: true }] }, () => {})
+        })
+    }
+    function save() {
+        models.setModel(model.id, own)
+        view.sheet = null
+    }
+
+    function gb(b) { return (b / 1073741824).toFixed(1) }
+    function contextLabel(c) { return c >= 1024 ? Math.round(c / 1024) + "K tokens" : `${c} tokens` }
+
+    //--- A setting whose choices open below it, like the generated pages' rows
+    component Choice: ColumnLayout {
+        id: choice
+        property string title
+        property string tip
+        property var options: []  // [{value, label}]
+        property var current
+        property bool open: false
+        signal picked(var value)
+        Layout.fillWidth: true
+        spacing: 6
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: 6
+            spacing: 8
+            Text {
+                text: choice.title
+                color: Theme.text
+                font.pixelSize: 15
+                TitleTip { tip: choice.tip }
+            }
+            Item { Layout.fillWidth: true }
+            Text {
+                readonly property var hit: choice.options.find(o => JSON.stringify(o.value) === JSON.stringify(choice.current))
+                text: hit ? hit.label : String(choice.current)
+                color: Theme.primary
+                font.pixelSize: 14
+            }
+            Chevron { open: choice.open; lit: rowHover.hovered }
+            HoverHandler { id: rowHover; cursorShape: Qt.PointingHandCursor }
+            TapHandler { gesturePolicy: TapHandler.ReleaseWithinBounds; onTapped: choice.open = !choice.open }
+        }
+        Reveal {
+            open: choice.open
+            gap: choice.spacing
+            Flow {
+                Layout.fillWidth: true
+                Layout.leftMargin: 6
+                spacing: 6
+                Repeater {
+                    model: choice.options
+                    Chip {
+                        required property var modelData
+                        text: modelData.label
+                        tip: modelData.tip || ""
+                        accent: JSON.stringify(modelData.value) === JSON.stringify(choice.current)
+                        onTapped: {
+                            choice.picked(modelData.value)
+                            choice.open = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    //--------------------------------------------------------------------//
+    //-- Fit
+    //--------------------------------------------------------------------//
+    Section {
+        text: "Fit"
+        info: "An estimate from the model file and this GPU. Test These Settings loads it for real."
+    }
+    Rectangle {
+        Layout.fillWidth: true
+        implicitHeight: 14
+        radius: 7
+        color: Theme.cardHover
+        visible: !!ed.fit
+        readonly property real total: ed.fit ? ed.fit.gpuTotal : 1
+        Row {
+            anchors.fill: parent
+            Rectangle {
+                height: parent.height
+                width: ed.fit ? parent.width * Math.min(1, ed.fit.others / parent.parent.total) : 0
+                color: Theme.dim
+                opacity: 0.5
+                radius: 7
+            }
+            Rectangle {
+                height: parent.height
+                width: ed.fit ? parent.width * Math.min(1, ed.fit.gpu / parent.parent.total) : 0
+                color: ed.fit && ed.fit.status === "fits" ? Theme.primary
+                       : ed.fit && ed.fit.status === "tight" ? Theme.caution : Theme.error
+                radius: 7
+            }
+        }
+    }
+    Text {
+        visible: !!ed.fit
+        Layout.fillWidth: true
+        Layout.leftMargin: 6
+        wrapMode: Text.Wrap
+        color: Theme.text
+        font.pixelSize: 14
+        text: !ed.fit ? ""
+              : `About ${ed.gb(ed.fit.gpu)} GB of ${ed.gb(ed.fit.gpuTotal)} GB`
+                + (ed.fit.others ? `, with ${ed.gb(ed.fit.others)} GB used by other apps` : "")
+                + (ed.unified ? "" : ` · ${ed.gb(ed.fit.ram)} GB in RAM`)
+                + (ed.fit.status === "fits" ? " · Fits"
+                   : ed.fit.status === "tight" ? " · Fits, with little room left" : " · Too big")
+    }
+    Text {
+        visible: !!ed.fit && ed.fit.auto
+        Layout.fillWidth: true
+        Layout.leftMargin: 6
+        wrapMode: Text.Wrap
+        color: Theme.dim
+        font.pixelSize: 13
+        text: !ed.fit || !ed.fit.auto ? ""
+              : "llama.cpp picks the split when it loads: "
+                + (ed.fit.picked.cpuMoe !== undefined
+                   ? (ed.fit.picked.cpuMoe ? `about ${ed.fit.picked.cpuMoe} layers' experts in RAM` : "everything on the GPU")
+                   : ed.fit.picked.gpuLayers === "all" ? "everything on the GPU"
+                   : `about ${ed.fit.picked.gpuLayers} layers on the GPU`)
+    }
+    Text {
+        visible: !!ed.fit && ed.fit.status !== "fits" && ed.fit.others > 1073741824 && !ed.unified
+        Layout.fillWidth: true
+        Layout.leftMargin: 6
+        wrapMode: Text.Wrap
+        color: Theme.caution
+        font.pixelSize: 13
+        text: "Closing apps that use the GPU (browsers, an animated wallpaper) frees room for the model."
+    }
+    Text {
+        visible: !!ed.fit && ed.fit.ramOver
+        Layout.fillWidth: true
+        Layout.leftMargin: 6
+        wrapMode: Text.Wrap
+        color: Theme.caution
+        font.pixelSize: 13
+        text: "This needs most of the computer's RAM; lower the prompt cache or the experts in RAM."
+    }
+    Text {
+        visible: ed.fitError !== ""
+        Layout.fillWidth: true
+        text: ed.fitError
+        color: Theme.caution
+        wrapMode: Text.Wrap
+    }
+
+    //--- Presets: Measured puts back the profile's tested values
+    Flow {
+        Layout.fillWidth: true
+        spacing: 6
+        visible: !!ed.fit
+        Repeater {
+            model: ed.fit ? ed.fit.presets : []
+            Chip {
+                required property var modelData
+                text: modelData.title
+                tip: ({ measured: "The values tested on this GPU profile.",
+                        speed: "Keeps the context and puts as much on the GPU as fits: fastest replies.",
+                        context: "The longest context that still fits, moving more to RAM: slower.",
+                        auto: "Leaves the split to llama.cpp, which fits the model when it loads." })[modelData.id] || ""
+                onTapped: ed.useTuning(modelData.tuning)
+            }
+        }
+    }
+
+    //--------------------------------------------------------------------//
+    //-- Tuning
+    //--------------------------------------------------------------------//
+    Section { text: "Tuning"; info: "Each value shows what loads now; hover a name for what it does." }
+    Choice {
+        // Added models only: a catalog model's vision file comes from lib/local-models.nix
+        visible: ed.model.added && ed.model.visionFiles.length > 0
+        title: "Vision"
+        tip: "A vision projector (mmproj) from the model's folder lets it read images. It loads on "
+             + "the GPU beside the model, so it counts toward the fit above. Text Only leaves it out."
+        current: "mmproj" in ed.own ? ed.own.mmproj : ""
+        options: [{ value: "", label: "Text Only" }].concat(ed.model.visionFiles.map(f => ({ value: f, label: f })))
+        onPicked: v => ed.setVision(v)
+    }
+    Choice {
+        // Added models only, like Vision
+        visible: ed.model.added && ed.model.mtpFiles.length > 0
+        title: "Speculative Decoding"
+        tip: "An MTP file from the model's folder drafts several tokens at a time for the model to "
+             + "check, so replies can come faster. It loads on the GPU beside the model and counts "
+             + "toward the fit above. Test it against Off; it can be slower on small quants."
+        current: "mtp" in ed.own ? ed.own.mtp : ""
+        options: [{ value: "", label: "Off" }].concat(ed.model.mtpFiles.map(f => ({ value: f, label: f })))
+        onPicked: v => ed.setMtp(v)
+    }
+    Choice {
+        visible: "mtp" in ed.own
+        title: "Draft Tokens"
+        tip: "How many tokens the MTP file guesses per step. More helps when its guesses are right "
+             + "most of the time and costs speed when they aren't."
+        current: ed.value("draftMax", 3)
+        options: [1, 2, 3, 4, 5, 6, 8].map(n => ({ value: n, label: String(n) }))
+        onPicked: v => ed.set("draftMax", v)
+    }
+    Choice {
+        title: "Context"
+        tip: "How much text the model holds at once: your prompt, files and its reply. More context "
+             + "takes more memory for its cache."
+        current: ed.value("context", ed.model.context)
+        options: {
+            const top = ed.fit ? ed.fit.model.trainedContext || 32768 : ed.model.context
+            const out = []
+            for (let c = 4096; c < top; c *= 2)
+                out.push({ value: c, label: ed.contextLabel(c) })
+            out.push({ value: top, label: ed.contextLabel(top) + " (most it knows)" })
+            return out
+        }
+        onPicked: v => ed.set("context", v)
+    }
+    Choice {
+        title: "Context Cache"
+        tip: "How precisely the context is kept. Half size barely changes answers and doubles the "
+             + "context that fits; quarter size can hurt long answers."
+        current: ed.value("cache", ed.model.cache)
+        // With a quality check run, each smaller size carries its verdict
+        options: [["f16", "Full (f16)"], ["q8_0", "Half Size (q8_0)"], ["q4_0", "Quarter Size (q4_0)"]].map(o => ({
+            value: o[0],
+            label: o[1] + (ed.quality && ed.quality[o[0]] ? ` · ${ed.quality[o[0]].verdict}` : ""),
+            tip: ed.quality && ed.quality[o[0]]
+                 ? `${ed.quality[o[0]].sameTop.toFixed(1)}% same top token, mean KLD ${ed.quality[o[0]].kld.toFixed(4)}`
+                 : ""
+        }))
+        onPicked: v => ed.set("cache", v)
+    }
+    Choice {
+        title: "Layers on the GPU"
+        tip: "Auto lets llama.cpp decide when it loads. All is fastest when it fits; fewer layers "
+             + "move the rest to the CPU, which is much slower."
+        current: ed.value("gpuLayers", "auto")
+        options: {
+            const out = [{ value: "auto", label: "Auto" }, { value: "all", label: "All" }]
+            if (ed.fit && !ed.moe)
+                for (let n = ed.fit.model.layers - 4; n > 0; n -= 4)
+                    out.push({ value: n, label: String(n) })
+            const n = ed.value("gpuLayers", "auto")
+            // -ngl 99, as the catalog writes it, is every layer
+            if (typeof n === "number" && !out.some(o => o.value === n))
+                out.push({ value: n, label: ed.fit && n >= ed.fit.model.layers ? `All (${n})` : String(n) })
+            return out
+        }
+        onPicked: v => ed.set("gpuLayers", v)
+    }
+    RowLayout {
+        visible: ed.moe && !ed.unified && ed.value("gpuLayers", "auto") !== "auto"
+        Layout.fillWidth: true
+        Layout.leftMargin: 6
+        spacing: 8
+        Text {
+            text: "Experts in RAM"
+            color: Theme.text
+            font.pixelSize: 15
+            TitleTip {
+                tip: "This model is a mixture of experts: each layer's experts can sit in RAM while the "
+                     + "rest stays on the GPU. More in RAM frees VRAM for context but replies slower."
+            }
+        }
+        Item { Layout.fillWidth: true }
+        IconButton {
+            icon: "remove"
+            tip: "One fewer layer's experts in RAM"
+            onClicked: ed.set("cpuMoe", Math.max(0, ed.value("cpuMoe", 0) - 1))
+        }
+        Text {
+            text: `${ed.value("cpuMoe", 0)} of ${ed.fit ? ed.fit.model.layers : "?"} layers`
+            color: Theme.primary
+            font.pixelSize: 14
+        }
+        IconButton {
+            icon: "add"
+            tip: "One more layer's experts in RAM"
+            onClicked: ed.set("cpuMoe", Math.min(ed.fit ? ed.fit.model.layers : 99, ed.value("cpuMoe", 0) + 1))
+        }
+    }
+    Choice {
+        title: "Prompt Batch"
+        tip: "How many tokens of a prompt it reads per step. Bigger reads long prompts and files "
+             + "faster but needs more VRAM."
+        current: ed.value("batch", 512)
+        options: [256, 512, 1024, 2048, 4096].map(n => ({ value: n, label: String(n) }))
+        onPicked: v => ed.set("batch", v)
+    }
+    Choice {
+        title: "Prompt Cache in RAM"
+        tip: "Earlier conversations kept in RAM, so going back to one doesn't reread it. Lower it "
+             + "when RAM runs short."
+        current: ed.value("cacheRam", 8192)
+        options: [{ value: 0, label: "Off" }, { value: 2048, label: "2 GB" }, { value: 4096, label: "4 GB" },
+                  { value: 8192, label: "8 GB" }, { value: 16384, label: "16 GB" }]
+        onPicked: v => ed.set("cacheRam", v)
+    }
+
+    //--------------------------------------------------------------------//
+    //-- Test
+    //--------------------------------------------------------------------//
+    Section {
+        text: "Test"
+        info: "Loads the model with these settings, sends a short prompt and measures it. It unloads "
+              + "llama-swap's model first; llama-swap loads it again the next time an app asks."
+    }
+    ListRow {
+        visible: !ed.model.supported
+        icon: "block"
+        tone: "caution"
+        title: `Can't run ${ed.model.arch} models yet`
+        info: "LM Studio has its own, newer engine. llama-swap runs nixpkgs' llama.cpp, which "
+              + "doesn't know this model's architecture until nixpkgs updates it."
+    }
+    ListRow {
+        visible: ed.models.info && ed.models.info.canTest && ed.model.supported
+        icon: ed.testing ? "progress_activity" : "speed"
+        title: ed.testing ? "Testing…" : ed.result ? `${ed.result.tokensPerSecond} tokens a second`
+                                                    + (ed.fit && ed.fit.lastTest ? ` · tested ${ed.fit.lastTest.at}` : "")
+                                                  : "Test These Settings"
+        subtitle: ed.testing ? ({ unload: "Freeing the GPU", load: "Loading the model", prompt: "Reading the prompt",
+                                  generate: "Writing a reply" })[ed.stage] || "Starting"
+                  : ed.result ? `Prompts ${ed.result.promptPerSecond} tok/s · VRAM peak `
+                                + `${ed.gb(ed.result.vramPeak)} of ${ed.gb(ed.result.vramTotal)} GB`
+                  : "Loading takes up to a minute"
+        tone: ed.result && ed.result.vramPeak > ed.result.vramTotal * 0.97 ? "caution" : ""
+        button: ed.testing ? "" : ed.result ? "Again" : "Test"
+        onClicked: ed.runTest()
+    }
+
+    Section {
+        visible: ed.models.info && ed.models.info.canTest && ed.model.supported
+        text: "Auto-Tune"
+        info: "Loads the model again and again, changing one setting at a time, and keeps the "
+              + "best that fits. Takes 3 to 8 minutes; llama-swap's model is unloaded meanwhile."
+    }
+    Choice {
+        visible: ed.models.info && ed.models.info.canTest && ed.model.supported
+        title: "Goal"
+        tip: "Fastest keeps the context set above and finds the quickest split. Most Context finds "
+             + "the longest context that still writes at the speed you pick."
+        current: ed.goal
+        options: [{ value: "speed", label: "Fastest at This Context" }, { value: "context", label: "Most Context" }]
+        onPicked: v => ed.goal = v
+    }
+    Choice {
+        visible: ed.models.info && ed.models.info.canTest && ed.model.supported && ed.goal === "context"
+        title: "At Least"
+        tip: "The slowest replies you'd accept. 20 tokens a second reads comfortably; coding "
+             + "agents feel slow under 15."
+        current: ed.minRate
+        options: [10, 15, 20, 30].map(n => ({ value: n, label: `${n} tokens a second` }))
+        onPicked: v => ed.minRate = v
+    }
+    Choice {
+        visible: ed.models.info && ed.models.info.canTest && ed.model.supported
+        title: "Context Cache"
+        tip: "Use a Smaller One also searches with each smaller context cache the quality check "
+             + "passes. A smaller cache frees VRAM, which buys context or speed. Runs the check first "
+             + "if this model has none."
+        current: ed.cacheMode
+        options: [{ value: "keep", label: "Keep Mine" }, { value: "quality", label: "Use a Smaller One if Quality Allows" }]
+        onPicked: v => ed.cacheMode = v
+    }
+    Choice {
+        visible: ed.models.info && ed.models.info.canTest && ed.model.supported && ed.cacheMode === "quality"
+        title: "Quality Limit"
+        tip: "How far a smaller cache's predictions may drift from Full, as mean KL divergence. "
+             + "Under 0.01 is generally indistinguishable in use; under 0.05 is a small but measurable change."
+        current: ed.kldLimit
+        options: [{ value: 0.01, label: "No Real Difference (KLD ≤ 0.01)" },
+                  { value: 0.05, label: "Slightly Different (KLD ≤ 0.05)" }]
+        onPicked: v => ed.kldLimit = v
+    }
+    ListRow {
+        visible: ed.models.info && ed.models.info.canTest && ed.model.supported
+        icon: ed.tuning ? "progress_activity" : "auto_fix_high"
+        title: ed.tuning ? `Auto-Tuning… attempt ${ed.attempts.length || 1}` : "Find the Best Settings"
+        subtitle: ed.tuning ? (ed.attempts.length ? ed.describe(ed.attempts[ed.attempts.length - 1].tuning) : "Freeing the GPU")
+                            : "The winner fills the settings above; Save keeps it"
+        button: ed.tuning ? (ed.stopping ? "" : "Stop") : ed.testing ? "" : "Auto-Tune"
+        onClicked: ed.tuning ? ed.stopAutoTune() : ed.runAutoTune()
+    }
+
+    //--- What the smaller context caches cost in answer quality
+    Section {
+        visible: ed.models.info && ed.models.info.canTest && ed.model.supported
+        text: "Answer Quality"
+        info: "Only Context Cache (and the model file you downloaded) changes answers; offload, batch "
+              + "and context length don't. This scores Half and Quarter Size against Full on the same "
+              + "text with llama.cpp's KL divergence."
+    }
+    ListRow {
+        visible: ed.models.info && ed.models.info.canTest && ed.model.supported
+        icon: ed.checking ? "progress_activity" : "fact_check"
+        title: ed.checking ? `Checking… ${ed.cacheNames[ed.stage === "base" ? "f16" : ed.stage] || ""}`
+                           : "Check Answer Quality"
+        subtitle: ed.checking ? "Three passes over the repo's guides, about a minute"
+                  : ed.quality ? `Checked ${ed.quality.at} · Full scores ${ed.quality.basePpl.toFixed(1)} perplexity`
+                  : "Compares Half and Quarter Size with Full"
+        info: "Runs llama-perplexity three times on the same text (about 4K tokens of the repo's guides) "
+              + "with this model's offload: once at Full to save its predictions, then with each smaller "
+              + "cache to measure how far they drift. Needs about 3 GB free in ~/.cache while it runs."
+        button: ed.checking ? (ed.stopping ? "" : "Stop") : ed.testing ? "" : ed.quality ? "Again" : "Check"
+        onClicked: ed.checking ? ed.stopQuality() : ed.runQuality()
+    }
+    ListRow {
+        visible: !!ed.quality && ed.quality.unreliable && !ed.checking
+        icon: "warning"
+        tone: "caution"
+        title: "The model reads the test text poorly"
+        subtitle: `Full scores ${ed.quality ? ed.quality.basePpl.toFixed(0) : ""} perplexity, so differences look bigger than in use`
+        info: "A model unsure of every next token (a chat model reading raw Markdown) flips its top pick "
+              + "on tiny changes, which inflates KL divergence. Auto-Tune won't pick a smaller cache "
+              + "from these numbers."
+    }
+    Repeater {
+        model: ["q8_0", "q4_0"]
+        ListRow {
+            required property string modelData
+            readonly property var q: ed.checking ? ed.qualityLive[modelData] : ed.quality && ed.quality[modelData]
+            visible: !!q && q.status !== "running"
+            compact: true
+            icon: "compress"
+            title: `${ed.cacheNames[modelData]} (${modelData})`
+            subtitle: q && q.kld !== undefined
+                      ? `${q.sameTop.toFixed(1)}% same top token · KLD ${q.kld.toFixed(4)} · perplexity ×${q.pplRatio.toFixed(3)}`
+                      : ""
+            value: q && q.verdict ? q.verdict : ""
+            tone: q && q.verdict ? ed.verdictTone(q.verdict) : ""
+            info: "Same top token: how often it picks the same next token as Full. KLD (KL divergence): how "
+                  + "far its whole spread of likely tokens moves from Full's; under 0.01 is generally "
+                  + "indistinguishable, 0.01–0.05 slightly different, 0.05–0.1 noticeable, over 0.1 clearly "
+                  + "worse (common rules of thumb). Perplexity ×: how much less sure it is of the text."
+        }
+    }
+
+    //--- What the test is doing: its steps, memory as it loads, and the reply's speed
+    Rectangle {
+        id: live
+        visible: ed.testing || ed.log.length > 0 || ed.attempts.length > 0
+        Layout.fillWidth: true
+        implicitHeight: liveCol.implicitHeight + 24
+        radius: 14
+        color: Qt.alpha(Theme.bg, 0.55)
+        border.width: 1
+        border.color: Theme.rule
+        // A quality check's passes, or a test's steps (Auto-Tune runs one, then the other)
+        readonly property bool checkSteps: ["base", "q8_0", "q4_0"].includes(ed.stage)
+                                           || (ed.stage === "done" && ed.runKind === "quality")
+        readonly property var steps: checkSteps
+            ? [["base", "Full", "target"], ["q8_0", "Half Size", "compress"], ["q4_0", "Quarter Size", "compress"]]
+            : [["unload", "Free the GPU", "memory_alt"], ["load", "Load", "download"],
+               ["prompt", "Read Prompt", "description"], ["generate", "Write Reply", "edit_note"]]
+        readonly property int at: ed.stage === "done" ? steps.length : steps.findIndex(s => s[0] === ed.stage)
+        ColumnLayout {
+            id: liveCol
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.margins: 12
+            spacing: 12
+
+            //--- Steps: done ones ticked, the current one pulsing
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 4
+                Repeater {
+                    model: live.steps
+                    ColumnLayout {
+                        id: step
+                        required property var modelData
+                        required property int index
+                        readonly property bool done: index < live.at
+                        readonly property bool current: index === live.at && ed.testing
+                        Layout.preferredWidth: (liveCol.width - 12) / live.steps.length
+                        spacing: 4
+                        Rectangle {
+                            Layout.alignment: Qt.AlignHCenter
+                            implicitWidth: 34
+                            implicitHeight: 34
+                            radius: 17
+                            color: step.done ? Theme.primary : step.current ? Qt.alpha(Theme.primary, 0.25) : Theme.cardHover
+                            Icon {
+                                anchors.centerIn: parent
+                                icon: step.done ? "check" : step.modelData[2]
+                                size: 18
+                                color: step.done ? Theme.inkPrimary : step.current ? Theme.primary : Theme.dim
+                            }
+                            SequentialAnimation on opacity {
+                                running: step.current
+                                loops: Animation.Infinite
+                                alwaysRunToEnd: true
+                                NumberAnimation { to: 0.45; duration: 600; easing.type: Easing.InOutQuad }
+                                NumberAnimation { to: 1; duration: 600; easing.type: Easing.InOutQuad }
+                            }
+                        }
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: step.modelData[1]
+                            color: step.done || step.current ? Theme.text : Theme.dim
+                            font.pixelSize: 12
+                        }
+                    }
+                }
+            }
+
+            //--- Memory over the test: VRAM and RAM as shares of each total
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 14
+                Repeater {
+                    model: [["VRAM", Theme.primary, ed.mem ? ed.mem.vram : 0, ed.mem ? ed.mem.vramTotal : 0],
+                            ["RAM", Theme.caution, ed.mem ? ed.mem.ram : 0, ed.mem ? ed.mem.ramTotal : 0]]
+                    RowLayout {
+                        required property var modelData
+                        spacing: 6
+                        Rectangle { implicitWidth: 8; implicitHeight: 8; radius: 4; color: parent.modelData[1] }
+                        Text {
+                            text: `${parent.modelData[0]} ${ed.gb(parent.modelData[2])} of ${ed.gb(parent.modelData[3])} GB`
+                            color: Theme.text
+                            font.pixelSize: 13
+                        }
+                    }
+                }
+                Item { Layout.fillWidth: true }
+            }
+            Rectangle {
+                Layout.fillWidth: true
+                implicitHeight: 90
+                radius: 8
+                color: Theme.cardHover
+                // Lines at a half and at full
+                Rectangle { x: 0; y: parent.height / 2; width: parent.width; height: 1; color: Theme.rule }
+                LineGraph {
+                    anchors.fill: parent
+                    anchors.margins: 4
+                    values: ed.ramSeries
+                    count: ed.graphSamples
+                    color: Theme.caution
+                }
+                LineGraph {
+                    anchors.fill: parent
+                    anchors.margins: 4
+                    values: ed.vramSeries
+                    count: ed.graphSamples
+                    color: Theme.primary
+                }
+            }
+
+            //--- The reply as it's written
+            RowLayout {
+                visible: !live.checkSteps && (ed.stage === "generate" || ed.stage === "done")
+                Layout.fillWidth: true
+                spacing: 10
+                Text {
+                    text: (ed.stage === "done" && ed.result ? ed.result.tokensPerSecond : ed.rate).toFixed(1)
+                    color: Theme.primary
+                    font.pixelSize: 28
+                    font.weight: Font.Bold
+                }
+                ColumnLayout {
+                    spacing: 4
+                    Layout.fillWidth: true
+                    Text {
+                        text: `tokens a second · ${ed.stage === "done" ? ed.maxTokens : ed.tokens} of ${ed.maxTokens} written`
+                        color: Theme.dim
+                        font.pixelSize: 13
+                    }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        implicitHeight: 6
+                        radius: 3
+                        color: Theme.cardHover
+                        Rectangle {
+                            width: parent.width * Math.min(1, ed.stage === "done" ? 1 : ed.tokens / ed.maxTokens)
+                            height: parent.height
+                            radius: 3
+                            color: Theme.primary
+                            Behavior on width { NumberAnimation { duration: 240 } }
+                        }
+                    }
+                }
+            }
+
+            //--- Auto-Tune's attempts, the winner marked once it's done
+            Text {
+                visible: ed.attempts.length > 0
+                text: "Attempts"
+                color: Theme.text
+                font.pixelSize: 14
+                TitleTip { tip: "Each load Auto-Tune tried. Too big ran out of VRAM; Tight fit but left "
+                                + "under 0.5 GB free, where speed drops." }
+            }
+            Repeater {
+                model: ed.attempts
+                RowLayout {
+                    required property var modelData
+                    readonly property bool winner: modelData.n === ed.bestN
+                    Layout.fillWidth: true
+                    spacing: 8
+                    Text {
+                        text: `${modelData.n}.`
+                        color: Theme.dim
+                        font.pixelSize: 13
+                        Layout.preferredWidth: 22
+                    }
+                    Text {
+                        text: ed.describe(modelData.tuning)
+                        color: parent.winner ? Theme.primary : Theme.text
+                        font.pixelSize: 13
+                        font.weight: parent.winner ? Font.DemiBold : Font.Normal
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                    Text {
+                        text: modelData.status === "running" ? "Testing…"
+                              : modelData.status === "too big" ? "Too big"
+                              : `${modelData.rate} tok/s · ${ed.gb(modelData.vramPeak)} GB`
+                                + (modelData.status === "tight" ? " · Tight" : "")
+                        color: modelData.status === "fits" ? Theme.text
+                               : modelData.status === "running" ? Theme.dim : Theme.caution
+                        font.pixelSize: 13
+                    }
+                    Chip { visible: parent.winner; text: "Best"; accent: true; tappable: false }
+                }
+            }
+
+            //--- llama-server's own output, for when something goes wrong
+            RowLayout {
+                Layout.fillWidth: true
+                Text {
+                    text: "Log"
+                    color: Theme.text
+                    font.pixelSize: 14
+                    TitleTip { tip: "Everything llama-server printed during the test." }
+                }
+                Item { Layout.fillWidth: true }
+                Chevron { open: logReveal.open; lit: logHover.hovered }
+                HoverHandler { id: logHover; cursorShape: Qt.PointingHandCursor }
+                TapHandler { gesturePolicy: TapHandler.ReleaseWithinBounds; onTapped: logReveal.open = !logReveal.open }
+            }
+            Reveal {
+                id: logReveal
+                gap: liveCol.spacing
+                ListView {
+                    id: logView
+                    Layout.fillWidth: true
+                    implicitHeight: 220
+                    clip: true
+                    model: logReveal.shown ? ed.log : []
+                    onCountChanged: positionViewAtEnd()
+                    boundsBehavior: Flickable.StopAtBounds
+                    delegate: Text {
+                        required property var modelData
+                        width: logView.width
+                        text: modelData
+                        color: Theme.dim
+                        font.family: "monospace"
+                        font.pixelSize: 11
+                        wrapMode: Text.WrapAnywhere
+                    }
+                }
+            }
+        }
+    }
+
+    actions: [
+        Pill { text: "Cancel"; quiet: true; onClicked: ed.view.sheet = null },
+        Pill { text: "Save"; onClicked: ed.save() }
+    ]
+}

@@ -12,17 +12,16 @@
     warpledge = {
       gaming.retroshelf = false;
       fileBrowsers.dolphin = false;
-      wallpaper = "engine";
+      wallpaper = "carousel";
       editors.vscodium = false;
-      localAi.chat = ["gemma-4-26b-a4b"];
-      localAi.edit = "sweep-next-edit-1.5b";
+      localAi.models = ["gemma-4-26b-a4b" "ornith-1.5-35b-a3b" "qwen3.6-35b-a3b-q4" "flint" "gemma-4-12b-it-qat" "ornith-1.5-35b-a3b-apex-mtp-i-mini" "qwen3.8-27b" "qwen3.8-27b-q2" "qwen3.8-27b-q3"];
+      localAi.edit = null;
       media.moku = true;
       media.boorusama = true;
       defaultApps.fileManager = "duxFiles";
       fileBrowsers.nautilus = true;
       fileBrowsers.yazi = false;
       claudeDesktop.enable = true;
-      localAi.code = ["ornith-1.5-35b-a3b"];
       artcraft.photocraft = false;
       artcraft.lightcraft = false;
       artcraft.vectorcraft = false;
@@ -42,7 +41,7 @@
       env = {};
       autostart = {};
       mimeTypes = {};
-      scrcpy.enable = false;
+      scrcpy.enable = true;
       audio.reaper = false;
       audio.guitarix = false;
       dev.go = false;
@@ -57,6 +56,7 @@
       media.aniCli = false;
       security.keepassxc = false;
       opencodeDesktop.enable = true;
+      pi.enable = true;
       openWebui.enable = false;
       claude.plugins.claudeSecurity = false;
       claude.accountSkills.docx = true;
@@ -114,7 +114,18 @@
       mangohud.textColor = "00FF00";
       mangohud.background = 0;
       gpuOffload = [];
-      steamGames = {};
+      steamGames = {
+        "438130" = {launchOptions = "nix-vn-720p %command%";};
+        "948740" = {launchOptions = "nix-vn-1080p %command%";};
+        "1698960" = {launchOptions = "";};
+        "3469850" = {launchOptions = "nix-rpgm %command%";};
+        "4256180" = {launchOptions = "nix-vn-768p %command%";};
+        "4732690" = {launchOptions = "PROTON_LOG=1 ENABLE_LAYER_MESA_ANTI_LAG=1 nix-performance %command%";};
+      };
+      claude.mods.usageBand = true;
+      claude.mods.rebuildPrompt = true;
+      keybinds = {};
+      localAi.default = "ornith-1.5-35b-a3b-apex-mtp-i-mini";
     };
   };
 
@@ -145,6 +156,9 @@
   # Options: "bibata" | "catppuccin"
   cursor = "bibata";
   cursorSize = 24;
+
+  #--- Local AI Models
+  localModels.profile = "rx-9070-xt";
 
   #--- Bluetooth
   bluetooth.enable = true;
@@ -215,4 +229,93 @@
   boot.menu.entries = 10;
   apparmor.enforce = ["evince" "file-roller" "katana-floorboard" "mpv" "obsidian" "prismlauncher" "streamlink" "tonkatsu-box" "tsunagu" "unrar" "yt-dlp"];
   blocklist.allow = [];
+  maintenance.clean = "weekly";
+  maintenance.keepDays = 5;
+  maintenance.keepGenerations = 5;
+  maintenance.optimise = "daily";
+  maintenance.updateReminderDays = 30;
+  localModels.models = {
+    flint = {
+      batch = 1024;
+      cache = "q8_0";
+      context = 262144;
+      cpuMoe = 33;
+      dir = "unsloth/flint-GGUF";
+      gpuLayers = "all";
+      match = "flint-UD-Q4_K_XL.gguf";
+      name = "flint";
+    };
+    gemma-4-12b-it-qat = {
+      batch = 2048;
+      cache = "q8_0";
+      context = 262144;
+      dir = "unsloth/gemma-4-12B-it-qat-GGUF";
+      gpuLayers = "all";
+      match = "gemma-4-12B-it-qat-UD-Q4_K_XL.gguf";
+      name = "gemma 4 12B it qat";
+    };
+    gemma-4-26b-a4b = {
+      batch = 2048;
+      cache = "q8_0";
+      context = 262144;
+      cpuMoe = 10;
+      gpuLayers = "all";
+      loadMode = "none";
+    };
+    "ornith-1.5-35b-a3b" = {
+      batch = 2048;
+      cache = "q8_0";
+      cacheRam = 4096;
+      context = 262144;
+      cpuMoe = 22;
+      gpuLayers = "all";
+      loadMode = "none";
+    };
+    "ornith-1.5-35b-a3b-apex-mtp-i-mini" = {
+      dir = "mudler/Ornith-1.5-35B-A3B-APEX-MTP-GGUF";
+      match = "Ornith-1.5-35B-A3B-APEX-MTP-I-Mini.gguf";
+      name = "Ornith 1.5 35B A3B APEX MTP I Mini";
+      mmproj = "mmproj.gguf";
+      context = 131072;
+      cache = "f16";
+      batch = 4096;
+      cacheRam = 16384;
+      gpuLayers = "all";
+      cpuMoe = 10;
+    };
+    "qwen3.8-27b" = {
+      batch = 2048;
+      cache = "q4_0";
+      cacheRam = 16384;
+      context = 131072;
+      dir = "unsloth/Qwen3.8-27B-GGUF";
+      gpuLayers = 49;
+      match = "Qwen3.8-27B-UD-Q4_K_M.gguf";
+      name = "Qwen3.8 27B";
+    };
+    "qwen3.8-27b-q2" = {
+      cache = "q4_0";
+      cacheRam = 16384;
+      context = 131072;
+      dir = "unsloth/Qwen3.8-27B-GGUF";
+      gpuLayers = "all";
+      match = "Qwen3.8-27B-UD-Q2_K_XL.gguf";
+      mmproj = "mmproj-F16.gguf";
+      mtp = "mtp-Qwen3.8-27B-Q4_0.gguf";
+      name = "Qwen3.8 27B Q2";
+    };
+    "qwen3.8-27b-q3" = {
+      cache = "q4_0";
+      cacheRam = 16384;
+      context = 32768;
+      dir = "unsloth/Qwen3.8-27B-GGUF";
+      gpuLayers = "all";
+      match = "Qwen3.8-27B-UD-Q3_K_XL.gguf";
+      mtp = "mtp-Qwen3.8-27B-Q4_0.gguf";
+      name = "Qwen3.8 27B Q3";
+    };
+  };
+  localModels.backend = "vulkan";
+  faceAuth.enable = false;
+  faceAuth.darkThreshold = 90;
 }

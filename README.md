@@ -233,13 +233,13 @@ My two computers:
 <details>
 <summary>Managing it with AI</summary>
 
-Turn the tools on in Omni Settings' **AI** tab: Claude Code and Claude Desktop under Cloud AI, and the model server, opencode and the models themselves under Local AI.
+Turn the tools on in Omni Settings: Claude Code and Claude Desktop under **AI > Claude**, the model server and the models under **AI > Local AI**, and opencode in **Default Packages**. opencode's plugin parts are switches under **AI > OpenCode**.
 
 - **Rules:** `CLAUDE.md` (plus one in several folders) tells Claude Code how the repo is laid out and what not to do, such as rebuilding on its own or committing a secret. `AGENTS.md` is a shorter copy for local models.
 - **Skills:** step-by-step jobs in `modules/home/programs/ai/skills/`, among them adding an app (`add-app`), updating and fixing what an update broke (`flake-update`, `disable-package`), troubleshooting a game (`game-troubleshooting`) and committing after a secret scan (`commit`). Claude Code, opencode and Zed's agent all read them.
-- **Mods:** `claude.mods.ribbon` adds [Ribbon][ribbon], a band above Claude Code's prompt with the usage left and whether the prompt cache is warm or cold, and `claude.statusLine` a status line with the context used. Others, each behind its own `claude.mods.*` toggle: [Skins][claude-skins] (with a matugen skin that follows the wallpaper), [File Tree][claude-filetree], [Savvy Progress][savvy-progress], and Anthropic's [Blast Radius and Replay Theater][claude-playground].
+- **Mods:** `claude.mods.usageBand` adds a band above Claude Code's prompt, built on [Ribbon][ribbon] and coloured by matugen, with the usage used and whether the prompt cache is warm or cold; `claude.mods.rebuildPrompt` adds Rebuild and Restart DMS buttons to it; and `claude.statusLine` adds a status line with the context used. Others, each behind its own `claude.mods.*` toggle: [Skins][claude-skins] (with a matugen skin that follows the wallpaper), [File Tree][claude-filetree], [Savvy Progress][savvy-progress], and Anthropic's [Blast Radius and Replay Theater][claude-playground].
 - **Lookups:** MCP servers search nixpkgs and NixOS options, library docs and GitHub, so answers come from current sources rather than the model's memory (`ai/mcp.nix`).
-- **Local models:** [llama-swap][llama-swap] serves the coding and chat models you pick to opencode, Zed and Open WebUI, with no cloud account.
+- **Local models:** [llama-swap][llama-swap] serves the models you pick to opencode, Zed, Pi and Open WebUI, with no cloud account.
 
 </details>
 
@@ -397,7 +397,7 @@ Most of what's below is optional: apps are switched on per person in `users/<nam
 | **Guitar** | [TONE3000][tone3000] (official NAM player, browses its capture and IR library in-app), [Guitarix][guitarix] (modular amp rig), [ir.lv2][ir-lv2] for cabinet IRs, [qpwgraph][qpwgraph] for patching, plus [FxFloorBoard][katana-fxfloorboard] to edit patches on the Boss Katana itself |
 | **Rhythm Games** | [feedBack][feedback] plays Guitar Pro tabs through its own audio engine, with VST hosting and amp modeling, so the Katana DI feed doubles as the game input; wrapped from the upstream AppImage with `appimageTools`, since it is not in nixpkgs. [Rocksmith 2014][rocksmith] runs on Proton and reads the same DI through [PipeASIO][pipeasio] and [RS_ASIO][rs-asio]; the module writes their config, and the hand-done install steps live in `docs/personal/gaming/rocksmith-2014.md` |
 | **Chat / Productivity** | [GoofCord][goofcord] or [Vesktop][vesktop] (follows the shell's theme live) via [nixcord][nixcord] (Vencord, with [arRPC][arrpc] running alongside it so Steam and Proton games show up as rich presence), [Ferdium][ferdium] (all your web messengers in one window), [Telegram Desktop][telegram], [AyuGram][ayugram], [Termius][termius], [Thunderbird][thunderbird], [Obsidian][obsidian] |
-| **AI Tooling** | [Claude Code][claude-code], [Claude Desktop][claude-desktop], [ChatGPT][chatgpt] with [Codex][codex], [MiMo Code][mimo-code], [OpenCode][opencode], [OpenCode Desktop][opencode-desktop], [OMP][omp], [ZCode][zcode], [LM Studio][lmstudio], [llama-swap][llama-swap], [Open WebUI][open-webui] |
+| **AI Tooling** | [Claude Code][claude-code], [Claude Desktop][claude-desktop], [ChatGPT][chatgpt] with [Codex][codex], [MiMo Code][mimo-code], [OpenCode][opencode], [OpenCode Desktop][opencode-desktop], [OMP][omp], [ZCode][zcode], [Pi][pi], [LM Studio][lmstudio], [llama-swap][llama-swap], [Open WebUI][open-webui] |
 | **Android** | [scrcpy][scrcpy] (mirror and control a device over USB or wifi, nothing to install on the phone), [Flutter][flutter] and [Gradle][gradle] with adb |
 | **Video Trimming** | [Video Trimmer][video-trimmer] (cut a clip out of a video without re-encoding it), [Constrict][constrict] (re-encode a video to fit a chosen file size) |
 | **Manga / Anime Reader** | [Suwayomi][suwayomi] is a local manga reader, opened from the launcher as a [Helium][helium] app window (`localhost:4567`) after a password prompt. [Moku][moku] covers manga, light novels and anime, built from source with a fix for overlapping search results, a per-source filter panel and a button that opens the current episode in mpv, with a local [FlareSolverr][flaresolverr] for Cloudflare-protected sources |
@@ -416,6 +416,7 @@ Most of what's below is optional: apps are switched on per person in `users/<nam
 | --- | --- |
 | **Launchers** | [Steam][steam] ([Gamescope][gamescope]), [Heroic][heroic], [Prism Launcher][prismlauncher], [Hytale][hytale] (a Flatpak, installed by hand), [EasyRPG Player][easyrpg] (RPG Maker 2000/2003 games, plus a Tobira no Densetsu launcher upscaled in gamescope), [xsystem4][xsystem4] (System 4 engine games, on the desktop), [Faugus Launcher][faugus-launcher], plus [Twintail][twintail] (gacha games) and [Lutris][lutris], those two off by default |
 | **Tools** | [GameMode][gamemode], [MangoHud][mangohud], [Goverlay][goverlay], [r2modman][r2modman], [ProtonPlus][protonplus], [Satisfactory Mod Manager][smm], [AntimicroX][antimicrox], [Rusty PoB][rpob], [Ludusavi][ludusavi] (daily game save backups), [RetroShelf][retroshelf] (ES-DE / RetroDECK library tidier) |
+| **Minecraft Servers** | Omni Server ([`modules/home/programs/gaming/omni-server/`](./modules/home/programs/gaming/omni-server/)), a [Quickshell][quickshell] app that runs modded servers from their folders as systemd user services, with live TPS, players, chat and a console, plus editors for settings, the whitelist, backups, mods and scheduled restarts (off by default) |
 | **Game Streaming** | [Sunshine][sunshine] streams games to [Moonlight][moonlight] clients on the LAN (off by default) |
 | **Granblue Relink Mods** | [RelinkModOrganizer][rmo] for data mods and [Reloaded-II][reloaded-ii] for code mods, both prebuilt bundles kept out of nixpkgs: RelinkModOrganizer in `~/.local/opt/`, Reloaded-II in the Desktop folder its installer makes, run in the game's Proton prefix (off by default) |
 </details>
@@ -452,6 +453,7 @@ Most of what's below is optional: apps are switched on per person in `users/<nam
 | **Secrets** | [GNOME Keyring][gnome-keyring] |
 | **Passwords** | [KeePassXC][keepassxc], with the vault file synced between devices by [Syncthing][syncthing] |
 | **Antivirus** | [ClamAV][clamav] (off by default) |
+| **Face Auth** | [Howdy][howdy] for sudo, polkit and the lock screen, with the password as fallback (off by default) |
 | **Remote Access** | [OpenSSH][openssh] with key-only login and no root login, plus [fail2ban][fail2ban], which bans an address for 12 hours after 3 failed attempts (off by default) |
 | **Cleanup** | [BleachBit][bleachbit] clears caches, logs and browser leftovers when run by hand; nothing runs on a schedule |
 
@@ -595,6 +597,7 @@ Most of what's below is optional: apps are switched on per person in `users/<nam
 [opencode-desktop]: https://opencode.ai
 [omp]: https://github.com/can1357/oh-my-pi
 [zcode]: https://zcode.z.ai
+[pi]: https://pi.dev/
 [lmstudio]: https://lmstudio.ai
 [llama-swap]: https://github.com/mostlygeek/llama-swap
 [open-webui]: https://github.com/open-webui/open-webui
@@ -611,6 +614,7 @@ Most of what's below is optional: apps are switched on per person in `users/<nam
 [cups]: https://openprinting.github.io/cups/
 [avahi]: http://avahi.org
 [clamav]: https://www.clamav.net
+[howdy]: https://github.com/boltgolt/howdy
 [bleachbit]: https://bleachbit.sourceforge.net
 [keepassxc]: https://keepassxc.org/
 [syncthing]: https://syncthing.net/
@@ -686,7 +690,7 @@ flake.nix
 | [`nur`](https://github.com/nix-community/NUR) | NixOS User Repository |
 | [`niri`](https://github.com/epireyn/niri-flake) (epireyn/niri-flake) | Niri WM |
 | [`dms`](https://github.com/duxlabs-dev/dux-shell) (duxlabs-dev, stable) | Dux Shell (formerly DankMaterialShell) |
-| [`dms-plugin-registry`](https://github.com/duxlabs-dev/dux-plugin-registry) | Dux Shell plugins (Claude Code usage, Quick Capture, AMD GPU monitor, ClipBoard+, Wallpaper Carousel, Linux Wallpaper Engine) |
+| [`dms-plugin-registry`](https://github.com/duxlabs-dev/dux-plugin-registry) | Dux Shell plugins (Quick Capture, AMD GPU monitor, ClipBoard+, Wallpaper Carousel, Linux Wallpaper Engine) |
 | [`dux-files`](https://github.com/duxlabs-dev/dux-files) | Dux Files, standalone file manager from Dux Labs |
 | [`dux-greeter`](https://github.com/duxlabs-dev/dux-greeter) | Login screen that matches Dux Shell |
 | [`stylix`](https://github.com/nix-community/stylix) | Fonts and cursor |

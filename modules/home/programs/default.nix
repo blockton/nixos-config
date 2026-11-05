@@ -54,7 +54,7 @@ user: {lib, ...}: {
     ++ lib.optionals user.browsers.firefox [./browsers/firefox.nix]
     ++ lib.optionals user.browsers.zen [./browsers/zen]
     ++ lib.optionals user.browsers.mullvad [./browsers/mullvad.nix]
-    ++ lib.optionals user.browsers.helium [./browsers/helium.nix]
+    ++ [./browsers/helium.nix] # Always on: it opens the web app windows
     ++ lib.optionals user.browsers.ferdium [./browsers/ferdium.nix]
     #--- Messaging (controlled by user settings)
     ++ lib.optionals user.messengers.telegram [./messaging/telegram.nix]
@@ -133,9 +133,10 @@ user: {lib, ...}: {
     ++ lib.optionals user.opencodeDesktop.enable [./ai/opencode-desktop.nix]
     ++ lib.optionals user.omp.enable [./ai/omp.nix]
     ++ lib.optionals user.zcode.enable [./ai/zcode.nix]
+    ++ lib.optionals user.pi.enable [./ai/pi.nix]
     ++ lib.optionals user.lmstudio.enable [./ai/lmstudio.nix]
     ++ lib.optionals user.llamaSwap.enable [./ai/llama-swap.nix]
-    ++ lib.optionals (user.claude.enable || user.opencode.enable) [./ai/mcp.nix]
+    ++ lib.optionals (user.claude.enable || user.opencode.enable || user.pi.enable) [./ai/mcp.nix]
     ++ lib.optionals (
       user.chatgpt.enable
       || user.codex.enable
@@ -144,6 +145,7 @@ user: {lib, ...}: {
       || user.opencodeDesktop.enable
       || user.omp.enable
       || user.zcode.enable
+      || user.pi.enable
       || (user.editors.zed && (user.llamaSwap.enable || user.claude.enable))
     ) [./ai/agent-skills.nix]
     #--- Discord (controlled by user settings)

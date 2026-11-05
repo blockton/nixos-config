@@ -12,6 +12,7 @@ import platform
 import pwd
 import re
 import selectors
+import signal
 import shlex
 import shutil
 import socket
@@ -23,7 +24,6 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
 import backend  # noqa: E402
 import backupstate  # noqa: E402
-import bootstate  # noqa: E402
 import changelog  # noqa: E402
 import closure  # noqa: E402
 import crashstate  # noqa: E402
@@ -33,13 +33,16 @@ import flatpakstate  # noqa: E402
 import gitstate  # noqa: E402
 import hardwarestate  # noqa: E402
 import keybindstate  # noqa: E402
+import localmodelstate  # noqa: E402
 import mimeapps  # noqa: E402
 import netstate  # noqa: E402
 import nixfile  # noqa: E402
 import packagestate  # noqa: E402
 import peoplestate  # noqa: E402
 import resetstate  # noqa: E402
+import facestate  # noqa: E402
 import protonstate  # noqa: E402
+import upscalestate  # noqa: E402
 import schema  # noqa: E402
 import securitystate  # noqa: E402
 import servicestate  # noqa: E402
@@ -52,10 +55,11 @@ import windowrulestate as wr  # noqa: E402
 HELPER = "/run/current-system/sw/bin/omni-settings-apply"
 
 #--- The master tabs across the top, each with its own page list
-TABS = [("main", "Main"), ("packages", "Packages"), ("niri", "Niri"), ("network", "Network"),
-        ("security", "Security"), ("hardware", "Hardware"), ("gaming", "Gaming"), ("ai", "AI"),
-        ("docs", "Docs")]
-TAB_ICONS = {"main": ("go-home-symbolic", "user-home-symbolic"),
+TABS = [("main", "Maintenance"), ("system", "System"), ("packages", "Packages"), ("niri", "Niri"),
+        ("network", "Network"), ("security", "Security"), ("hardware", "Hardware"), ("gaming", "Gaming"),
+        ("ai", "AI"), ("docs", "Docs")]
+TAB_ICONS = {"main": ("applications-engineering-symbolic",),
+             "system": ("applications-system-symbolic",),
              "packages": ("package-x-generic-symbolic", "system-software-install-symbolic"),
              "niri": ("view-grid-symbolic", "view-app-grid-symbolic"),
              "network": ("network-workgroup-symbolic", "network-wired-symbolic"),
@@ -73,8 +77,8 @@ TOP = {"main": [("overview", "Maintenance", ("computer-symbolic",)),
                 ("git", "Git", ("vcs-branch-symbolic", "branch-symbolic", "folder-remote-symbolic")),
                 ("flatpaks", "Flatpaks", ("flatpak-symbolic", "system-software-install-symbolic")),
                 ("backups", "Backups", ("drive-harddisk-symbolic", "document-save-symbolic")),
-                ("updates", "Updates", ("software-update-available-symbolic", "view-refresh-symbolic")),
-                ("people", "Users", ("system-users-symbolic", "avatar-default-symbolic"))],
+                ("disabled", "Disabled Packages", ("action-unavailable-symbolic", "dialog-warning-symbolic"))],
+       "system": [("people", "Users", ("system-users-symbolic", "avatar-default-symbolic"))],
        "packages": [("packages", "Search", ("system-search-symbolic", "edit-find-symbolic"))],
        "niri": [("shell", "Shell", ("view-app-grid-symbolic",)),
                 ("windowrules", "Window Rules",
@@ -82,7 +86,8 @@ TOP = {"main": [("overview", "Maintenance", ("computer-symbolic",)),
                 ("siderail", "Side Rail", ("view-dual-symbolic", "sidebar-show-symbolic")),
                 ("keybinds", "Keybinds", ("input-keyboard-symbolic", "preferences-desktop-keyboard-symbolic"))],
        "network": [("nettools", "Tools", ("network-workgroup-symbolic", "utilities-terminal-symbolic"))],
-       "security": [("apparmor", "AppArmor", ("security-high-symbolic", "channel-secure-symbolic"))],
+       "security": [("apparmor", "AppArmor", ("security-high-symbolic", "channel-secure-symbolic")),
+                    ("faceauth", "Face Auth", ("camera-web-symbolic",))],
        "hardware": [("firmware", "Firmware", ("software-update-available-symbolic", "application-x-firmware")),
                     ("battery", "Battery", ("battery-symbolic", "battery-full-symbolic")),
                     ("dgpu", "Run on dGPU", ("video-display-symbolic", "computer-symbolic")),
@@ -96,12 +101,13 @@ TOP = {"main": [("overview", "Maintenance", ("computer-symbolic",)),
        "docs": []}
 
 #--- The line under each page in the page list that has no description of its own
-NAV_SUBTITLES = {"overview": "Updates, freeing space, versions, crashes", "git": "Changes, commits, pull requests",
-                 "flatpaks": "Apps nixpkgs doesn't have: update them, clean up, and switch each one "
-                             "on or off",
+NAV_SUBTITLES = {"overview": "Updates, pinned versions, freeing space, versions",
+                 "git": "Changes, commits, pull requests",
+                 "flatpaks": "Apps nixpkgs doesn't have: get them from Flathub, update them, clean "
+                             "up, and switch each one on or off",
                  "backups": "Back up app data",
-                 "updates": "New upstream versions of hand-pinned apps, and disabled packages that "
-                            "build again",
+                 "disabled": "Packages switched off after an update broke them, and whether they "
+                             "build again. Turning one back on waits for Apply.",
                  "people": "Who can log in to this computer. Each person picks their own apps by "
                            "opening Omni Settings on their own account.", "packages": "Find packages in nixpkgs",
                  "shell": "DankMaterialShell, the bar, launcher and lock screen niri runs with. "
@@ -128,9 +134,13 @@ NAV_SUBTITLES = {"overview": "Updates, freeing space, versions, crashes", "git":
                                  "Default Packages.",
                  "games": "Your Steam games: build each one's launch options and pick its Proton "
                           "version. Changes wait for Apply, and reach Steam once it's closed.",
-                 "proton": "Launch options for Steam, Heroic and Lutris. Click one to copy it.",
+                 "proton": "Launch options for Steam, Heroic and Lutris. Click one to copy it, or "
+                           "pick a game's window for its upscaling option.",
                  "mangohud": "The in-game overlay: what it shows and where. The test window shows "
                              "changes as you make them; games get them after Apply.",
+                 "localmodels": "Tune how each local model loads on this computer's GPU, see "
+                                "whether it fits, test it, and add models LM Studio downloaded. "
+                                "Changes wait for Apply.",
                  "protonversions": "The Proton and Wine builds each launcher can run games with. Pick "
                                    "one per game in the launcher, or Steam's default under Settings, "
                                    "Compatibility."}
@@ -140,11 +150,9 @@ QUICK = ["display_config", "keybinds", "mouse_touchpad", "theme", "wallpaper", "
          "notifications", "network_wifi", "audio"]
 HISTORY = 8  # versions the Overview lists
 
-#--- Sections shown on a tab other than Main
-SECTION_TAB = {"cloudai": "ai", "localai": "ai", "apps": "packages", "network": "network",
-               "security": "security"}
-#--- Apps pages that leave Default Packages for a page of their own on another tab
-PAGE_TAB = {"Gaming": "gaming", "Security": "security"}
+#--- Each section's tab; one not listed goes on System
+SECTION_TAB = {"computer": "system", "personal": "system", "opencode": "ai", "cloudai": "ai",
+               "localai": "ai", "apps": "packages", "network": "network", "security": "security"}
 
 USER_PACKAGES = ("user", ("userPackages",))
 KEYBINDS = ("user", schema.KEYBINDS)
@@ -153,8 +161,6 @@ SIDE_RAIL = ("user", schema.SIDE_RAIL)
 
 STATE_DIR = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state"),
                          "omni-settings")
-#--- What's New items the user dismissed, as "domain:dotted.path"
-DISMISSED = os.path.join(STATE_DIR, "whats-new-dismissed.json")
 #--- Which pages and cards are open, kept across launches
 UI_STATE = os.path.join(STATE_DIR, "ui.json")
 #--- The Apps section's pages, merged into one page of cards
@@ -173,14 +179,6 @@ def parse_id(key):
     if domain not in ("machine", "user") or not dotted:
         raise ValueError(f"bad setting key: {key}")
     return domain, tuple(dotted.split("."))
-
-
-def read_dismissed():
-    try:
-        with open(DISMISSED) as f:
-            return set(json.load(f))
-    except (OSError, ValueError):
-        return set()
 
 
 def read_ui():
@@ -203,6 +201,8 @@ def shown(setting, value):
         return f"{len(value)} rail app{'' if len(value) == 1 else 's'} changed" if value else "Not set"
     if setting.kind == "steamgames":
         return f"{len(value)} game{'' if len(value) == 1 else 's'} set" if value else "Not set"
+    if setting.kind == "localmodels":
+        return f"{len(value)} model{'' if len(value) == 1 else 's'} changed or added" if value else "Not set"
     if isinstance(value, dict):
         if not all(isinstance(v, list) for v in value.values()):
             n = len(value)
@@ -272,10 +272,19 @@ def setting_json(cfg, state, s, multi, modules):
            "defaultShown": shown(s, s.default)}
     if s.kind == "choice":
         out["choices"] = [{"value": c, "label": choice_label(s, c)} for c in s.choices]
+        if s.path == ("localAi", "default"):
+            # None, or a model turned on; the machine's added ones aren't in s.choices
+            on = backend.dig(state.resolved["users"][cfg.user], ("localAi", "models")) or []
+            out["choices"] = [{"value": None, "label": choice_label(s, None)}] \
+                + [{"value": m, "label": choice_label(s, m) if m in s.choices else m} for m in on]
     if s.kind == "pick":
         out["data"] = s.data
     if s.kind == "list":
         out["options"] = s.options
+        # Models this machine adds (localModels.models) can be picked here too
+        if s.path == ("localAi", "models"):
+            added = (state.resolved.get("localModels") or {}).get("models") or {}
+            out["options"] = s.options + [m for m in added if m not in s.options]
         out["ports"] = s.ports
     if ".".join(s.path) in schema.SWITCH_LISTS:
         out["switchList"] = True
@@ -310,8 +319,10 @@ def app_card(page, pid, groups):
             "card": pid, "settings": settings, "links": [l for g in groups for l in g["links"]]}
 
 
-def shows(key, wm):
+def shows(key, wm, cfg=None):
     """Whether a TOP page applies to this computer."""
+    if key == "disabled":
+        return bool(cfg and updatestate.disabled_names(cfg.flake))
     if key == "shell":
         return wm == "niri"
     if key == "battery":
@@ -324,6 +335,8 @@ def shows(key, wm):
         return hardwarestate.scx_unit() is not None
     if key == "apparmor":
         return securitystate.profiles() is not None
+    if key == "localmodels":
+        return bool(os.environ.get("OMNI_SETTINGS_LLAMA_SERVER"))
     return True
 
 
@@ -340,18 +353,18 @@ def cmd_load(cfg, _args):
     for tab, _ in TABS:
         items = [{"id": key, "title": title, "icon": list(icons), "custom": True,
                   "subtitle": NAV_SUBTITLES.get(key, "")}
-                 for key, title, icons in TOP[tab] if shows(key, wm)]
+                 for key, title, icons in TOP[tab] if shows(key, wm, cfg)]
         if items:
             nav[tab].append({"id": "", "title": "", "items": items})
     pages, by_section = {}, {key: [] for key, _ in schema.SECTIONS}
-    apps_groups, tab_pages = [], {}
+    apps_groups = []
     # Under niri every DMS link moves to the Shell page, in categories (shellLinks),
     # except those on a page of a tab of its own (Network's Connections)
     shell_links = wm == "niri"
     shell = {}
     for page in state.pages:
         if page.section in ("userpkgs", "keybinds", "windowrules", "siderail", "startup", "filetypes",
-                            "dgpu", "games"):
+                            "dgpu", "games", "localmodels"):
             continue
         pid = schema.TOP_PAGES[page.title] if page.section == "top" else f"page:{page.title}"
         groups = []
@@ -366,17 +379,11 @@ def cmd_load(cfg, _args):
             locked = not direct and any(s.domain == "machine" for s in g.settings)
             groups.append({"title": g.title, "description": g.description, "locked": locked,
                            "collapsed": (page.title, g.title) in schema.COLLAPSED,
+                           "chips": (page.title, g.title) in schema.CHIPS,
                            "icon": schema.COLLAPSED.get((page.title, g.title), ""),
                            "settings": [setting_json(cfg, state, s, multi, modules) for s in g.settings],
                            "links": links})
         if not groups:
-            continue
-        if page.title in PAGE_TAB:
-            pages[pid] = {"id": pid, "title": "Apps", "description": page.description,
-                          "icon": [page.icon, schema.FALLBACK_ICON], "intro": "",
-                          "changeFor": multi, "groups": groups}
-            tab_pages.setdefault(PAGE_TAB[page.title], []).append(
-                {"id": pid, "title": "Apps", "icon": [page.icon, schema.FALLBACK_ICON]})
             continue
         if page.section == "apps" or page.section not in by_section and page.section != "top":
             apps_groups.append(app_card(page, pid, groups))
@@ -402,6 +409,15 @@ def cmd_load(cfg, _args):
                         if (s.domain, s.path) == ("user", schema.STEAM_GAMES)), None)
     gpu_offload = next((s for p in state.pages for g in p.groups for s in g.settings
                         if (s.domain, s.path) == ("user", ("gpuOffload",))), None)
+    local_models = {s.path[-1]: setting_json(cfg, state, s, multi, modules) for s in schema.flat(state.pages)
+                    if s.domain == "machine" and s.path[0] == "localModels"}
+    if shows("localmodels", wm, cfg):
+        # After the server page, before the models it serves
+        items = by_section["localai"]
+        server = next((i for i, item in enumerate(items) if item["id"] == "page:Server"), -1)
+        items.insert(server + 1, {"id": "localmodels", "title": "Tuning",
+                                  "icon": ["applications-engineering-symbolic", "cpu-symbolic"],
+                                  "subtitle": NAV_SUBTITLES["localmodels"]})
     if startup:
         by_section["personal"].append({"id": "startup", "title": "Startup",
                                        "icon": ["system-run-symbolic"],
@@ -412,13 +428,13 @@ def cmd_load(cfg, _args):
                                        "subtitle": NAV_SUBTITLES["filetypes"]})
     for key, title in schema.SECTIONS:
         if by_section[key]:
-            nav[section_tab.get(key, "main")].append({"id": key, "title": title, "items": by_section[key]})
-    for tab, items in tab_pages.items():
-        nav[tab].append({"id": f"{tab}-apps", "title": "", "items": items})
+            nav[section_tab.get(key, "system")].append({"id": key, "title": title, "items": by_section[key]})
     user_packages = next((s for p in state.pages for g in p.groups for s in g.settings
                           if (s.domain, s.path) == USER_PACKAGES), None)
     if user_packages:
-        nav["packages"].append({"id": "userpkgs", "title": "User Packages",
+        # First after Search, above Default Packages
+        top = sum(1 for g in nav["packages"] if g["id"] == "")
+        nav["packages"].insert(top, {"id": "userpkgs", "title": "User Packages",
                                 "items": [{"id": "userpackages", "title": "All",
                                            "subtitle": NAV_SUBTITLES["userpackages"],
                                            "icon": ["package-x-generic-symbolic"], "custom": True}]})
@@ -437,9 +453,8 @@ def cmd_load(cfg, _args):
     if game_docs:
         nav["docs"].append({"id": "gaming", "title": "Gaming", "items": game_docs})
 
-    dismissed = read_dismissed()
     new = [{"key": new_id(d, p), "value": v} for d, p, v in state.new
-           if (d == "user" or direct) and new_id(d, p) not in dismissed
+           if (d == "user" or direct)
            and any(s.domain == d and s.path == p for s in schema.flat(state.pages))]
     banner = ""
     if not helper():
@@ -463,6 +478,7 @@ def cmd_load(cfg, _args):
             "mimeTypes": mime_types and setting_json(cfg, state, mime_types, multi, modules),
             "gpuOffload": gpu_offload and setting_json(cfg, state, gpu_offload, multi, modules),
             "steamGames": steam_games and setting_json(cfg, state, steam_games, multi, modules),
+            "localModels": local_models or None,
             "starter": packagestate.STARTER,
             "dmsSearch": [{"label": e.label, "description": e.description, "keywords": e.keywords,
                            "tab": e.link.tab, "page": e.link.page} for e in state.dms_entries]}
@@ -478,6 +494,154 @@ def cmd_list(_cfg, args):
 def cmd_mime_apps(_cfg, _args):
     """The apps installed here, for the File Types page."""
     return mimeapps.apps()
+
+
+#--------------------------------------------------------------------#
+#-- Tuning
+#--------------------------------------------------------------------#
+def local_models_arg(cfg, args):
+    """The page's localModels value, pending changes included, else this machine's."""
+    value = args.get("localModels")
+    if not isinstance(value, dict):
+        value = loaded(cfg).resolved.get("localModels") or {}
+    backend = value.get("backend") or (loaded(cfg).resolved.get("localModels") or {}).get("backend")
+    localmodelstate.use_backend(backend)  # which GPU's memory the page reads
+    return {"profile": value.get("profile"), "models": value.get("models") or {}, "backend": backend}
+
+
+def local_model(cfg, args):
+    """(local models setting, profiles, id, entry, file) for args.id."""
+    lm = local_models_arg(cfg, args)
+    profs = localmodelstate.profiles(cfg.flake)
+    entry = localmodelstate.entries(cfg.flake, lm).get(args.get("id"))
+    if not entry:
+        raise ValueError(f"no model {args.get('id')}")
+    path = localmodelstate.find_file(entry)
+    if not path:
+        raise ValueError(f"{entry.get('name', args.get('id'))} isn't downloaded: no "
+                         f"{entry.get('match')} in ~/.lmstudio/models/{entry.get('dir')}")
+    return lm, profs, args["id"], entry, path
+
+
+def cmd_local_models(cfg, args):
+    """The page: the GPU, the profiles, every model with its tuning, and the
+    files LM Studio downloaded."""
+    lm = local_models_arg(cfg, args)
+    profs = localmodelstate.profiles(cfg.flake)
+    card = localmodelstate.gpu(profs)
+    entries = localmodelstate.entries(cfg.flake, lm)
+    profile = lm["profile"]
+    knows = localmodelstate.architectures(os.environ.get("OMNI_SETTINGS_LLAMA_SERVER"))
+    models = []
+    for mid, entry in entries.items():
+        own = lm["models"].get(mid) or {}
+        t = localmodelstate.effective(entry, profile, profs, own)
+        path = localmodelstate.find_file(entry)
+        arch = localmodelstate.arch_of(path) if path else ""
+        models.append({"id": mid, "name": entry.get("name", mid),
+                       "dir": entry.get("dir", ""), "match": entry.get("match", ""),
+                       "added": mid in lm["models"] and "dir" in own, "own": own,
+                       "measured": localmodelstate.measured(entry, profile, profs),
+                       "effective": t, "context": entry.get("context", 32768),
+                       "cache": entry.get("cache") or "q8_0",
+                       "flags": localmodelstate.flags(t, profile, profs) + list(entry.get("args") or []),
+                       "lastTest": localmodelstate.last_test(mid, t),
+                       "arch": arch, "supported": knows(arch) if knows else True,
+                       "mmproj": entry.get("mmproj") or "",
+                       "visionFiles": localmodelstate.vision_files(entry),
+                       "mtp": entry.get("mtp") or "",
+                       "mtpFiles": localmodelstate.mtp_files(entry),
+                       "file": path and os.path.basename(path),
+                       "bytes": path and localmodelstate.size_of(path)})
+    return {"gpu": card, "profile": profile,
+            "profiles": [{"id": k, "name": v.get("name", k), "memory": v.get("memory"),
+                          "note": v.get("note", "")} for k, v in profs.items()],
+            "models": models,
+            "files": localmodelstate.scan({**(localmodelstate.catalog(cfg.flake).get("edit") or {}),
+                                           **entries}, knows),
+            "canTest": bool(os.environ.get("OMNI_SETTINGS_LLAMA_SERVER"))}
+
+
+def cmd_local_model_estimate(cfg, args):
+    """How a model's tuning fits (args.id, args.localModels), and the presets."""
+    lm, profs, mid, entry, path = local_model(cfg, args)
+    profile = lm["profile"]
+    card = localmodelstate.gpu(profs)
+    t = localmodelstate.effective(entry, profile, profs, lm["models"].get(mid))
+    vision = localmodelstate.find_vision(entry)
+    mtp = localmodelstate.find_mtp(entry)
+    sized = {**t, "_vision": localmodelstate.size_of(vision) if vision else 0,
+             "_mtp": localmodelstate.size_of(mtp) if mtp else 0}
+    try:
+        out = localmodelstate.estimate(path, sized, card, profile, profs)
+        out["presets"] = localmodelstate.presets(path, sized, card, profile, profs, entry)
+        out["lastTest"] = localmodelstate.last_test(mid, t)
+        out["quality"] = localmodelstate.last_quality(mid)
+    except (OSError, ValueError, KeyError) as e:
+        raise ValueError(f"Couldn't read {os.path.basename(path)}: {e}") from None
+    return out
+
+
+def cmd_local_model_test(cfg, args):
+    """Loads the model with its tuning in llama-server, progress on stderr, and
+    returns what it used and how fast it ran."""
+    lm, profs, mid, entry, path = local_model(cfg, args)
+    t = localmodelstate.effective(entry, lm["profile"], profs, lm["models"].get(mid))
+    result = localmodelstate.test(os.environ.get("OMNI_SETTINGS_LLAMA_SERVER"), path, t, entry,
+                                  lm["profile"], profs)
+    localmodelstate.remember(mid, t, result)
+    return result
+
+
+def cmd_local_model_auto_tune(cfg, args):
+    """Searches for the model's best tuning by loading it repeatedly (args.goal
+    "speed" or "context", args.minRate for "context"); progress on stderr. Stop
+    sends SIGTERM, which unwinds so llama-server is stopped too."""
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
+    lm, profs, mid, entry, path = local_model(cfg, args)
+    profile = lm["profile"]
+    server = os.environ.get("OMNI_SETTINGS_LLAMA_SERVER")
+    base = localmodelstate.effective(entry, profile, profs, lm["models"].get(mid))
+    card = localmodelstate.gpu(profs)
+    localmodelstate.runnable(server, path)
+    localmodelstate.unload_swap()
+    caches = None
+    #--- args.cache "quality": smaller context caches the quality check passes too,
+    #--- running the check first when this model has none
+    if args.get("cache") == "quality":
+        checked = localmodelstate.last_quality(mid)
+        if not checked:
+            try:
+                checked = localmodelstate.quality(server, path, base, cfg.flake)
+            except localmodelstate.TooBig as e:
+                raise ValueError(str(e)) from None
+            localmodelstate.remember_quality(mid, checked)
+        caches = localmodelstate.passing_caches(base.get("cache", "q8_0"), checked,
+                                                float(args.get("kldLimit") or 0.01))
+    try:
+        out = localmodelstate.autotune(server, path, entry, base, args.get("goal") or "speed",
+                                       float(args.get("minRate") or 20), card, profile, profs, caches)
+    except localmodelstate.TooBig as e:
+        raise ValueError(str(e)) from None
+    localmodelstate.remember(mid, localmodelstate.effective(entry, profile, profs, out["best"]), out["result"])
+    return out
+
+
+def cmd_local_model_quality(cfg, args):
+    """Scores the smaller context caches against full precision (llama-perplexity's
+    KL divergence), progress on stderr; saved per model."""
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
+    lm, profs, mid, entry, path = local_model(cfg, args)
+    t = localmodelstate.effective(entry, lm["profile"], profs, lm["models"].get(mid))
+    server = os.environ.get("OMNI_SETTINGS_LLAMA_SERVER")
+    localmodelstate.runnable(server, path)
+    localmodelstate.unload_swap()
+    try:
+        out = localmodelstate.quality(server, path, t, cfg.flake)
+    except localmodelstate.TooBig as e:
+        raise ValueError(f"{e}\n\nLower Layers on the GPU or raise Experts in RAM, then check again.") from None
+    localmodelstate.remember_quality(mid, out)
+    return localmodelstate.last_quality(mid)
 
 
 def cmd_firmware(_cfg, args):
@@ -498,6 +662,10 @@ def cmd_firmware_summary(_cfg, _args):
 
 def cmd_battery(_cfg, _args):
     return hardwarestate.battery()
+
+
+def cmd_face_auth(_cfg, _args):
+    return facestate.state()
 
 
 def cmd_scheduler(_cfg, _args):
@@ -551,15 +719,6 @@ def cmd_save(cfg, args):
         raise PermissionError("only an admin who can edit the files saves without a rebuild")
     backend.write(cfg, state, changes_arg(args), args.get("machine", cfg.machine), state.user_machines)
     return True
-
-
-def cmd_dismiss(_cfg, args):
-    """Hides What's New items (args.keys) until a later setting brings the page back."""
-    keys = read_dismissed() | set(args.get("keys") or [])
-    os.makedirs(STATE_DIR, exist_ok=True)
-    with open(DISMISSED, "w") as f:
-        json.dump(sorted(keys), f)
-    return sorted(keys)
 
 
 def cmd_saveUi(_cfg, args):
@@ -622,11 +781,13 @@ def cmd_freed(_cfg, _args):
 
 
 def cmd_status(_cfg, _args):
-    """What the header shows: this computer, its NixOS release, kernel and running version."""
+    """What the header shows: this computer, its NixOS release, kernel and running version,
+    and whether Resources is installed for the CPU and RAM graphs to open."""
     running = os.path.realpath(closure.CURRENT)
     generation = next((g.number for g in closure.generations() if g.path == running), 0)
     return {"hostname": socket.gethostname(), "release": system.os_release().split(" (")[0],
-            "kernel": platform.release(), "generation": generation}
+            "kernel": platform.release(), "generation": generation,
+            "monitor": shutil.which("resources") is not None}
 
 
 def cmd_usage(_cfg, _args):
@@ -640,15 +801,12 @@ def cmd_usage(_cfg, _args):
             key, value = line.split(":", 1)
             mem[key] = int(value.split()[0]) * 1024
     disk = shutil.disk_usage("/")
+    with open("/proc/uptime") as f:
+        uptime = float(f.read().split()[0])
     return {"cpuTotal": sum(ticks), "cpuIdle": ticks[3] + ticks[4],
             "memTotal": mem["MemTotal"], "memUsed": mem["MemTotal"] - mem["MemAvailable"],
-            "diskTotal": disk.total, "diskUsed": disk.used}
-
-
-def cmd_boot(_cfg, _args):
-    """The last startup's stages, its slowest units and the chain it waited on; slow,
-    so asked for apart."""
-    return bootstate.summary()
+            "diskTotal": disk.total, "diskUsed": disk.used, "diskFree": disk.free,
+            "uptime": int(uptime)}
 
 
 def cmd_check_updates(cfg, _args):
@@ -742,6 +900,29 @@ def cmd_git_summary(cfg, _args):
         raise ValueError(str(e))
 
 
+def cmd_summaries(cfg, _args):
+    """What collapsed custom pages say under their title, from cached or quick reads only."""
+    up = updatestate.run(cfg, cached_only=True)
+    rows = up["rows"]
+    state = loaded(cfg)
+    user = state.resolved["users"][cfg.user]
+    # Days old once past the machine's maintenance.updateReminderDays, else 0
+    remind = (state.resolved.get("maintenance") or {}).get("updateReminderDays", 30)
+    try:
+        lock = system.lock_nodes(os.path.join(cfg.flake, "flake.lock"))
+        age = int((time.time() - lock["nixpkgs"]["locked"]["lastModified"]) // 86400)
+    except (OSError, KeyError, ValueError):
+        age = 0
+    base = os.path.join(backupstate.ROOT, socket.gethostname())
+    backups = [{"title": title, "last": backupstate.newest(os.path.join(base, folder))}
+               for _, title, _, _, folder in backupstate.kinds(user)]
+    return {"updates": None if up["checked"] is None else {
+                "upstream": sum(r["status"] == "update" and r["kind"] != "disabled" for r in rows),
+                "fixed": sum(r["status"] == "update" and r["kind"] == "disabled" for r in rows)},
+            "backups": backups,
+            "updateDue": age if remind and age >= remind else 0}
+
+
 #--------------------------------------------------------------------#
 #-- Flatpaks
 #--------------------------------------------------------------------#
@@ -792,12 +973,22 @@ def run_streamed(commands):
 
 def cmd_flatpak_run(_cfg, args):
     """One Flatpak action, its progress on stderr: uninstall, install (an app
-    switched off here), runtime (an app's missing runtime), update, unused or
-    repair. args.key names the app as "<installation>:<id>"."""
+    switched off here), runtime (an app's missing runtime), update, unused,
+    repair or flathub (args.id, from Flathub into the user's installation).
+    args.key names the app as "<installation>:<id>"."""
     lst, action = flatpakstate.listing(), args.get("action")
     apps = {a.key: a for a in lst.apps}
     off = {a.key: a for a in lst.off}
     ref = apps.get(args.get("key")) or off.get(args.get("key"))
+    if action == "flathub":
+        app_id = args.get("id") or ""
+        if not flatpakstate.APP_ID.match(app_id):
+            raise ValueError("that isn't a Flatpak app ID")
+        ok, tail = run_streamed(flatpakstate.install_flathub(app_id))
+        if not ok:
+            raise ValueError(f"Couldn't install {app_id}\n\n" + ("\n".join(tail[-6:]) or "Flatpak didn't say why."))
+        flatpakstate.forget(f"user:{app_id}")
+        return f"{args.get('name') or app_id} installed"
     if action in ("uninstall", "runtime") and args.get("key") not in apps:
         raise ValueError("that app isn't installed")
     if action == "install" and args.get("key") not in off:
@@ -838,6 +1029,22 @@ def cmd_flatpak_run(_cfg, args):
     if action == "runtime":
         return f"{ref.name} can start now"
     return {"update": "Flatpaks updated", "repair": "Repair finished"}[action]
+
+
+def cmd_flatpak_search(_cfg, args):
+    """Flathub apps matching args.text: the first 50 and how many in all, each
+    marked when it's installed already."""
+    text = (args.get("text") or "").strip()
+    if len(text) < 2:
+        return {"results": [], "count": 0}
+    try:
+        found = flatpakstate.search(text)
+    except (RuntimeError, subprocess.TimeoutExpired) as e:
+        raise ValueError(str(e))
+    have = {a.id for a in flatpakstate.listing().apps}
+    q = text.lower()
+    found.sort(key=lambda r: (r["name"].lower() != q, not r["name"].lower().startswith(q)))
+    return {"results": [dict(r, installed=r["id"] in have) for r in found[:50]], "count": len(found)}
 
 
 def cmd_flatpak_forget(_cfg, args):
@@ -914,6 +1121,42 @@ def cmd_mangohud_test(cfg, args):
 def cmd_upstream(cfg, args):
     """What upstream released past the hand-pinned versions; cached: the last check only."""
     return updatestate.run(cfg, force=bool(args.get("force")), cached_only=bool(args.get("cached")))
+
+
+def cmd_disabled_packages(cfg, _args):
+    """docs/nixpkgs/disabled-packages.md's rows, each with Pinned Versions' last
+    check and, when the row names a switch this page may flip, that setting."""
+    state = loaded(cfg)
+    _, direct = access(cfg, state)
+    modules = backend.toggle_modules(cfg.flake)
+    multi = len(state.user_machines) > 1
+    checked = {r["name"]: r for r in updatestate.run(cfg, cached_only=True)["rows"] if r["kind"] == "disabled"}
+    settings = {(s.domain, s.path): s for s in schema.flat(state.pages)}
+    rows = []
+    for r in updatestate.disabled_rows(cfg.flake):
+        t, setting, why = r["toggle"], None, ""
+        if t:
+            s = settings.get((t["domain"], tuple(t["path"])))
+            if s is None or s.kind != "bool":
+                why = "The app doesn't show this switch."
+            elif t["domain"] == "user" and t["owner"] != cfg.user:
+                why = f"It's {t['owner']}'s switch: they turn it back on from their own account."
+            elif t["domain"] == "machine" and t["owner"] != cfg.machine:
+                why = f"It's {t['owner']}'s switch: turn it back on from that computer."
+            elif t["domain"] == "machine" and not direct:
+                why = "Only an admin can turn a computer's switch back on."
+            else:
+                setting = setting_json(cfg, state, s, multi, modules)
+        rows.append(dict(r, check=checked.get(r["name"]), setting=setting, why=why))
+    return {"rows": rows, "doc": updatestate.DISABLED_DOC}
+
+
+def cmd_disabled_check(cfg, args):
+    """Checks one disabled package against nixos-unstable's head now."""
+    name = args.get("name")
+    if name not in updatestate.disabled_names(cfg.flake):
+        raise ValueError(f"{name} isn't in {updatestate.DISABLED_DOC}")
+    return updatestate.check_one(cfg, name)
 
 
 #--------------------------------------------------------------------#
@@ -1057,6 +1300,49 @@ def cmd_apparmor_check(_cfg, args):
         raise ValueError(str(e))
 
 
+#--------------------------------------------------------------------#
+#-- MCP Keys
+#--------------------------------------------------------------------#
+#--- The MCP servers that read a key from ~/.nixos-config-mcp (ai/mcp.nix)
+MCP_KEYS = {"context7": "Context7", "github": "GitHub"}
+MCP_DIR = os.path.expanduser("~/.nixos-config-mcp")
+
+
+def cmd_mcp_keys(cfg, _args):
+    """Each keyed server the user has on and whether its file holds a key; never the key."""
+    mcp = (loaded(cfg).resolved["users"][cfg.user].get("claude") or {}).get("mcp") or {}
+    out = []
+    for server, title in MCP_KEYS.items():
+        if not mcp.get(server):
+            continue
+        try:
+            st = os.lstat(os.path.join(MCP_DIR, server))
+            is_set = st.st_size > 0 and not os.path.islink(os.path.join(MCP_DIR, server))
+        except OSError:
+            is_set = False
+        out.append({"server": server, "title": title, "set": is_set})
+    return out
+
+
+def cmd_set_mcp_key(_cfg, args):
+    """Writes args.key as the owner-only file for args.server; an empty key clears it.
+    Called only through --serve's stdin (Backend.callPrivate), so the key is never in argv."""
+    server, key = args.get("server", ""), args.get("key", "")
+    if server not in MCP_KEYS:
+        raise ValueError("Unknown MCP server.")
+    if key and sys.argv[1:] != ["--serve"]:
+        raise ValueError("A key goes through the --serve backend, never the command line.")
+    if not isinstance(key, str) or "\n" in key.strip() or len(key) > 4096:
+        raise ValueError("Paste the key on one line.")
+    os.makedirs(MCP_DIR, mode=0o700, exist_ok=True)
+    os.chmod(MCP_DIR, 0o700)
+    fd = os.open(os.path.join(MCP_DIR, server), os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, "w") as f:
+        os.fchmod(fd, 0o600)
+        f.write(key.strip())
+    return {"set": bool(key.strip())}
+
+
 def cmd_ssh_keys(_cfg, _args):
     return securitystate.ssh_keys()
 
@@ -1131,6 +1417,22 @@ def cmd_launch_options(_cfg, _args):
     return protonstate.launch_options()
 
 
+def cmd_steam_pending(_cfg, _args):
+    """Whether Steam is open and the games whose launch options wait for it to restart."""
+    return steamstate.pending()
+
+
+def cmd_steam_shut_down(_cfg, _args):
+    """Quits Steam and waits for it; the Games page starts it again."""
+    steamstate.shut_down()
+    return True
+
+
+def cmd_upscale_pick(_cfg, _args):
+    """A game window picked in niri and its nix-vn or nix-rpgm launch option; None when cancelled."""
+    return upscalestate.pick()
+
+
 def cmd_proton_versions(_cfg, _args):
     return protonstate.versions()
 
@@ -1171,7 +1473,8 @@ def rule_json(rule, index, rule_id=None, off=False, custom=False, now=None, save
             "title": wr.rule_title(rule), "note": rule.get("note", ""),
             "category": rule.get("category", ""),
             "app": wr.plain(matches[0]["app-id"]) if one_app else "",
-            "tags": [{"text": wr.tag_text(p, v), "kind": wr.tag_kind(p)} for p, v in wr.properties(rule)],
+            "tags": [{"text": wr.tag_text(p, v), "kind": wr.tag_kind(p), "group": wr.tag_group(p)}
+                     for p, v in wr.properties(rule)],
             "matches": [match_json(m) for m in matches],
             "excludes": [match_json(m) for m in rule.get("excludes") or []],
             "raw": rule if index is not None else None,
@@ -1350,16 +1653,20 @@ def cmd_save_window_rule(cfg, args):
 
 
 COMMANDS = {"load": cmd_load, "list": cmd_list, "review": cmd_review, "save": cmd_save,
-            "dismiss": cmd_dismiss, "saveUi": cmd_saveUi,
+            "localModels": cmd_local_models, "localModelEstimate": cmd_local_model_estimate,
+            "localModelTest": cmd_local_model_test, "localModelAutoTune": cmd_local_model_auto_tune,
+            "localModelQuality": cmd_local_model_quality,
+            "saveUi": cmd_saveUi,
             "stale": cmd_stale, "removeStale": cmd_remove_stale,
-            "overview": cmd_overview, "freed": cmd_freed, "boot": cmd_boot,
+            "overview": cmd_overview, "freed": cmd_freed,
             "status": cmd_status, "usage": cmd_usage,
             "checkUpdates": cmd_check_updates, "changelog": cmd_changelog,
             "compare": cmd_compare, "failedLog": cmd_failed_log, "forgetFailed": cmd_forget_failed,
-            "git": cmd_git, "gitSummary": cmd_git_summary, "setBackup": cmd_set_backup,
+            "git": cmd_git, "gitSummary": cmd_git_summary, "summaries": cmd_summaries, "setBackup": cmd_set_backup,
             "flatpaks": cmd_flatpaks, "flatpakUpdates": cmd_flatpak_updates, "flatpakRun": cmd_flatpak_run,
-            "flatpakForget": cmd_flatpak_forget, "flatseal": cmd_flatseal,
+            "flatpakForget": cmd_flatpak_forget, "flatseal": cmd_flatseal, "flatpakSearch": cmd_flatpak_search,
             "backups": cmd_backups, "backup": cmd_backup, "upstream": cmd_upstream,
+            "disabledPackages": cmd_disabled_packages, "disabledCheck": cmd_disabled_check,
             "people": cmd_people, "checkPerson": cmd_check_person,
             "services": cmd_services, "serviceLog": cmd_service_log, "serviceRestart": cmd_service_restart,
             "ports": cmd_ports,
@@ -1367,9 +1674,10 @@ COMMANDS = {"load": cmd_load, "list": cmd_list, "review": cmd_review, "save": cm
             "blockLookup": cmd_block_lookup,
             "apparmor": cmd_apparmor, "apparmorCheck": cmd_apparmor_check,
             "sshKeys": cmd_ssh_keys, "sshGithub": cmd_ssh_github, "sshGenerate": cmd_ssh_generate,
+            "mcpKeys": cmd_mcp_keys, "setMcpKey": cmd_set_mcp_key,
             "packageNames": cmd_package_names, "packageSearch": cmd_package_search,
             "packagePreviews": cmd_package_previews,
-            "resetApp": cmd_reset_app, "doc": cmd_doc, "docLink": cmd_doc_link, "launchOptions": cmd_launch_options, "protonVersions": cmd_proton_versions, "steamGames": cmd_steam_games,
+            "resetApp": cmd_reset_app, "doc": cmd_doc, "docLink": cmd_doc_link, "launchOptions": cmd_launch_options, "upscalePick": cmd_upscale_pick, "protonVersions": cmd_proton_versions, "steamGames": cmd_steam_games, "steamPending": cmd_steam_pending, "steamShutDown": cmd_steam_shut_down,
             "crashes": cmd_crashes, "crashReport": cmd_crash_report,
             "windowRules": cmd_window_rules, "niriWindows": cmd_niri_windows, "pickWindow": cmd_pick_window,
             "addWindowRule": cmd_add_window_rule, "saveWindowRule": cmd_save_window_rule,
@@ -1377,7 +1685,8 @@ COMMANDS = {"load": cmd_load, "list": cmd_list, "review": cmd_review, "save": cm
             "appIcon": cmd_app_icon, "pickIconFile": cmd_pick_icon_file, "siteIcon": cmd_site_icon,
             "mimeApps": cmd_mime_apps, "splitCommand": cmd_split_command,
             "firmware": cmd_firmware, "firmwareSummary": cmd_firmware_summary, "battery": cmd_battery,
-            "mangohudTest": cmd_mangohud_test, "mangohudPreview": cmd_mangohud_preview, "scheduler": cmd_scheduler}
+            "mangohudTest": cmd_mangohud_test, "mangohudPreview": cmd_mangohud_preview, "scheduler": cmd_scheduler,
+            "faceAuth": cmd_face_auth}
 
 
 def run(cfg, cmd, args):

@@ -63,6 +63,21 @@
   gpu.nvidiaBusId = ""; # Hybrid laptops only, e.g. "PCI:1:0:0"
   gpu.integratedBusId = ""; # Hybrid laptops only: the AMD or Intel chip
 
+  #--- Local AI Models (Omni Settings' Tuning page edits these)
+  # profile: a GPU from lib/gpu-profiles.nix whose tuning the models use;
+  # null lets llama.cpp fit each model itself. models: per model id, tuning
+  # changes for a lib/local-models.nix model, or a whole model to add (an added
+  # one's `mmproj` names its vision file in the same folder, e.g. "mmproj-F16.gguf",
+  # and `mtp` its MTP file, e.g. "mtp-*.gguf").
+  localModels.profile = null;
+  localModels.models = {};
+  # llama.cpp's GPU backend: "vulkan" (AMD, Intel, NVIDIA) or "cuda" (NVIDIA only,
+  # built from source on the first rebuild)
+  localModels.backend = "vulkan";
+  # Unified-memory chips (Strix Halo): GB of RAM the GPU may use, e.g. 120 on
+  # a 128GB machine; null keeps the kernel's default (about half the RAM)
+  localModels.gpuSharedGB = null;
+
   #--------------------------------------------------------------------#
   #-- Boot
   #--------------------------------------------------------------------#
@@ -72,6 +87,20 @@
     timeout = 5;
     entries = 10;
   };
+
+  #--------------------------------------------------------------------#
+  #-- Maintenance
+  #--------------------------------------------------------------------#
+  #--- Clean Up Old Versions: how often garbage collection runs ("off" never),
+  #--- keeping generations newer than keepDays and the last keepGenerations
+  maintenance.clean = "weekly";
+  maintenance.keepDays = 5;
+  maintenance.keepGenerations = 5;
+  #--- Optimize the Nix Store: hard-links identical files at 04:00
+  maintenance.optimise = "daily";
+  #--- Update Reminder: a notification once the config's packages are this
+  #--- many days old; 0 turns it off
+  maintenance.updateReminderDays = 30;
 
   #--------------------------------------------------------------------#
   #-- Language & Keyboard
@@ -141,6 +170,15 @@
   # Background scanner, definition updates and the ClamTK window
   clamav.enable = false;
 
+  #--- Face Auth
+  # Howdy for sudo, polkit and the lock screen; the password still works.
+  # A photo can fool it. Run sudo howdy add after the rebuild.
+  faceAuth.enable = false;
+  # The IR camera, from ls /dev/v4l/by-path; null uses /dev/video2
+  faceAuth.device = null;
+  # Howdy skips frames darker than this percent; IR frames are mostly dark
+  faceAuth.darkThreshold = 90;
+
   #--- AppArmor
   # Profiles that block instead of only logging (see docs/security/apparmor.md).
   # Known names: the policies in nixos/security/apparmor/, e.g. mpv, evince
@@ -152,7 +190,7 @@
 
   #--- Suwayomi Manga Server
   # Local manga reader, web UI at http://localhost:4567. Its launcher opens
-  # in Helium (browsers.helium).
+  # in Helium.
   suwayomi.enable = false;
 
   #--- Syncthing File Sync

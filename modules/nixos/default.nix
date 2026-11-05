@@ -49,6 +49,7 @@
     ++ lib.optionals (lib.any lib.id (lib.attrValues anyUser.gaming)) [./gaming]
     #--- Graphics drivers (controlled by machine settings; null: the machine's own files)
     ++ lib.optionals (machine.gpu.type != null) [./services/hardware/gpu.nix]
+    ++ lib.optionals (machine.localModels.gpuSharedGB != null) [./services/hardware/gpu-shared-memory.nix]
     #--- Caps Lock remap, Bluetooth and printing (controlled by machine settings)
     ++ lib.optionals machine.capsLockRemap [./services/hardware/keyd.nix]
     ++ lib.optionals machine.bluetooth.enable [./services/hardware/bluetooth.nix]
@@ -58,6 +59,8 @@
     ++ lib.optionals machine.mullvad.enable [./security/mullvad]
     #--- ClamAV Antivirus (controlled by machine settings)
     ++ lib.optionals machine.clamav.enable [./security/clamav.nix]
+    #--- Face auth with Howdy (controlled by machine settings)
+    ++ lib.optionals machine.faceAuth.enable [./security/auth/face-auth.nix]
     #--- Docker (controlled by machine settings)
     ++ lib.optionals machine.docker.enable [./services/runtimes/docker.nix]
     #--- Flatpak, with Flatseal (controlled by machine settings)

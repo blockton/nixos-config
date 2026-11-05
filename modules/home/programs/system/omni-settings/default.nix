@@ -22,6 +22,11 @@
   compatTools = lib.concatMapStringsSep ";" (p: "${lib.getName p} ${lib.getVersion p}") (
     lib.optionals steam.enable steam.extraCompatPackages
   );
+  #--- The machine's llama.cpp build, for the Tuning page's tests
+  localAi = import ../../../../../lib/local-ai.nix {
+    inherit lib;
+    inherit (machine) localModels;
+  };
   #--- The user's default text editor, which the Default Packages pages open modules in
   editor = ((import ../../../../../lib/default-apps.nix {inherit lib;}).forUser user).textEditor;
   #--- Mullvad's split tunnel (nixos/security/mullvad/split-tunnel.nix): the panel runs
@@ -44,6 +49,8 @@
       # Python can't cache bytecode in the store, so each call would recompile
       ${pkgs.python3}/bin/python3 -m compileall -q --invalidation-mode unchecked-hash $share
       install -Dm644 -t $share/qml ${./qml}/*.qml
+      install -Dm644 -t $share/qml \
+        ${pkgs.nixos-icons}/share/icons/hicolor/128x128/apps/nix-snowflake.png
       substitute ${./qml/Config.qml.in} $share/qml/Config.qml \
         --subst-var-by backend $out/bin/omni-settings-backend \
         --subst-var-by editor ${lib.escapeShellArg (builtins.toJSON {inherit (editor) launch desktop;})}
@@ -75,6 +82,10 @@
         --set OMNI_SETTINGS_CLEAN_DATES ${lib.escapeShellArg (lib.optionalString clean.enable clean.dates)} \
         --set OMNI_SETTINGS_COMPAT_TOOLS ${lib.escapeShellArg compatTools} \
         --set OMNI_SETTINGS_APPARMOR_INCLUDES ${pkgs.apparmor-profiles}/etc/apparmor.d \
+        ${lib.optionalString user.llamaSwap.enable
+        # The Tuning page's test: the same build llama-swap runs. The line's
+        # backslash stays outside, so an empty string still continues the command
+        "--set OMNI_SETTINGS_LLAMA_SERVER ${lib.getExe' (localAi.llamaCpp pkgs) "llama-server"}"} \
         --prefix PATH : ${lib.makeBinPath [
         alejandra
         pkgs.nix-search-tv

@@ -1,4 +1,5 @@
-// omni-settings-backend (src/api.py): one process per command, its JSON reply to `done`
+// The backend (src/api.py): one process per command, its JSON reply to `done`.
+// Omni Server builds this same file in (gaming/omni-server/)
 pragma Singleton
 import QtQuick
 import Quickshell
@@ -25,6 +26,18 @@ Singleton {
         server.write(JSON.stringify({ id, cmd, args: args || {} }) + "\n")
     }
 
+    //--- As call(), but only through the --serve backend's stdin, never argv (which
+    //--- /proc shows every user), for secrets like an API key; waits for it to start
+    property var held: []
+    function callPrivate(cmd, args, done) {
+        if (server.up) {
+            call(cmd, args, done)
+            return
+        }
+        held = held.concat([[cmd, args, done]])
+        server.running = true
+    }
+
     function answer(line) {
         let msg
         try {
@@ -47,6 +60,10 @@ Singleton {
         onStarted: {
             up = true
             idle.restart()
+            const queued = backend.held
+            backend.held = []
+            for (const q of queued)
+                backend.call(q[0], q[1], q[2])
         }
         onExited: {
             up = false
@@ -54,7 +71,12 @@ Singleton {
             backend.waiting = {}
             for (const id in lost)
                 if (lost[id])
-                    lost[id]({ ok: false, error: "omni-settings-backend stopped" })
+                    lost[id]({ ok: false, error: "The backend stopped" })
+            const held = backend.held
+            backend.held = []
+            for (const q of held)
+                if (q[2])
+                    q[2]({ ok: false, error: "The backend didn't start" })
         }
     }
 
@@ -77,7 +99,8 @@ Singleton {
         p.running = true
     }
 
-    //--- As call(), with each line the command prints to stderr given to onLine
+    //--- As call(), with each line the command prints to stderr given to onLine;
+    //--- returns the process, which `running = false` stops
     function stream(cmd, args, onLine, done) {
         const p = streamer.createObject(backend, {
             command: [bin, cmd, JSON.stringify(args || {})],
@@ -85,6 +108,7 @@ Singleton {
             each: onLine
         })
         p.running = true
+        return p
     }
 
     Component {
@@ -106,7 +130,7 @@ Singleton {
                     try {
                         reply = JSON.parse(text)
                     } catch (e) {
-                        reply = { ok: false, error: "omni-settings-backend gave no answer\n\n" + sproc.last.join("\n") }
+                        reply = { ok: false, error: "The backend gave no answer\n\n" + sproc.last.join("\n") }
                     }
                     if (sproc.done)
                         sproc.done(reply)
@@ -127,7 +151,7 @@ Singleton {
                     try {
                         reply = JSON.parse(text)
                     } catch (e) {
-                        reply = { ok: false, error: err.text.trim() || "omni-settings-backend gave no answer" }
+                        reply = { ok: false, error: err.text.trim() || "The backend gave no answer" }
                     }
                     if (proc.done)
                         proc.done(reply)

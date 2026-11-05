@@ -19,6 +19,13 @@
 
   machineDefaults = allOff (removeAttrs (import ../machines/_template/settings.nix) ["users"]);
   userDefaults = allOff (import ../users/_template/settings.nix);
+  #--- Older files' localAi.code and .chat still pass; resolveUser folds them
+  acceptedUserKeys = lib.recursiveUpdate userDefaults {
+    localAi = {
+      code = [];
+      chat = [];
+    };
+  };
 
   #--- Settings that take one of a few values
   choices = {
@@ -28,13 +35,18 @@
     cursorSize = [24 32 48 64];
     "battery.chargeLimit" = [null 60 70 80 90];
     "gpu.type" = [null "amd" "intel" "nvidia" "amd+nvidia" "intel+nvidia"];
+    "maintenance.clean" = ["daily" "weekly" "monthly" "off"];
+    "maintenance.optimise" = ["daily" "weekly" "monthly" "off"];
+    "localModels.profile" = [null] ++ lib.attrNames (import ./gpu-profiles.nix);
+    "localModels.backend" = ["vulkan" "cuda"];
+    #--- GB of RAM an APU's GPU may use: a little under 32, 64, 128 and 256GB
+    "localModels.gpuSharedGB" = [null 24 28 48 56 60 96 112 120 124 192 240 248];
   };
   #--- Lists whose items must come from a known set
   listChoices = {
     "blocklist.extra" = ["fakenews" "gambling" "porn" "social"];
-    #--- localAi.code and .chat: models lib/local-models.nix lists
-    "localAi.code" = lib.attrNames (import ./local-models.nix).code;
-    "localAi.chat" = lib.attrNames (import ./local-models.nix).chat;
+    #--- localAi.models: models lib/local-models.nix lists
+    "localAi.models" = lib.attrNames (import ./local-models.nix).models;
     #--- MangoHud.conf's display items (gaming/default.nix)
     "mangohud.show" = [
       "fps"
@@ -68,6 +80,9 @@
   numberRanges = {
     "boot.menu.timeout" = [0 60];
     "boot.menu.entries" = [1 50];
+    "maintenance.keepDays" = [0 90];
+    "maintenance.keepGenerations" = [1 50];
+    "maintenance.updateReminderDays" = [0 365];
     "mangohud.fontSize" = [8 64];
     "mangohud.background" = [0 100];
   };
@@ -126,8 +141,8 @@
         "${at}.matches should be a list of sets"
         ++ lib.optional (r ? excludes && !(matchList r.excludes))
         "${at}.excludes should be a list of sets"
-        ++ lib.optional (r ? enable && !(lib.isBool r.enable))
-        "${at}.enable should be true or false"
+        ++ map (k: "${at}.${k} should be true or false")
+        (lib.filter (k: r ? ${k} && !(lib.isBool r.${k})) ["enable" "translucent"])
         ++ map (k: "${at}.${k} should be text in quotes")
         (lib.filter (k: r ? ${k} && !(lib.isString r.${k})) ["name" "note" "category"]))
       value);
@@ -182,6 +197,53 @@
         ++ map (k: "`steamGames.${id}.${k}` should be text in quotes")
         (lib.filter (k: g ? ${k} && !(lib.isString g.${k})) ["launchOptions" "proton"]))
       value);
+  #--- A machine's localModels.models (lib/local-ai.nix): tuning for a catalog
+  #--- model, or a whole new one; tuning fields kept in step with local-ai.nix
+  catalog = import ./local-models.nix;
+  tuningFields = {
+    context = v: lib.isInt v && v > 0;
+    cache = v: lib.elem v ["f16" "bf16" "q8_0" "q5_1" "q5_0" "q4_1" "q4_0" "iq4_nl"];
+    gpuLayers = v: lib.isInt v && v >= 0 || lib.elem v ["all" "auto"];
+    cpuMoe = v: lib.isInt v && v >= 0;
+    batch = v: lib.isInt v && v > 0;
+    cacheRam = v: lib.isInt v && v >= -1;
+    fitTarget = v: lib.isInt v && v >= 0;
+    loadMode = v: lib.elem v ["auto" "none" "mmap" "mlock" "mmap+mlock" "dio"];
+    draftMax = v: lib.isInt v && v > 0; # MTP draft tokens per step
+  };
+  addedFields =
+    tuningFields
+    // {
+      category = v: lib.elem v ["code" "chat"];
+      name = lib.isString;
+      dir = lib.isString;
+      match = lib.isString;
+      mmproj = lib.isString; # the vision projector's file match in the same folder
+      mtp = lib.isString; # the MTP file's match in the same folder
+      args = v: lib.isList v && lib.all lib.isString v;
+      think = lib.isAttrs;
+      fast = v: v == null || lib.isAttrs v;
+      chat = v: v == null || lib.isAttrs v;
+    };
+  localModelProblems = value:
+    if !(lib.isAttrs value && lib.all lib.isAttrs (lib.attrValues value))
+    then ["`localModels.models` should be a set of sets, e.g. {\"gpt-oss-20b\" = {context = 65536;};}"]
+    else
+      lib.concatLists (lib.mapAttrsToList (id: m: let
+        at = "`localModels.models.${id}`";
+        known = catalog.models ? ${id};
+        fields =
+          if known
+          then tuningFields
+          else addedFields;
+      in
+        map (k: "${at} can't set ${k} (use ${lib.concatStringsSep ", " (lib.attrNames fields)})")
+        (lib.filter (k: !(fields ? ${k})) (lib.attrNames m))
+        ++ map (k: "`localModels.models.${id}.${k}` has the wrong kind of value")
+        (lib.filter (k: fields ? ${k} && !(fields.${k} m.${k})) (lib.attrNames m))
+        ++ lib.optional (!known && !(m ? name && m ? dir && m ? match))
+        "${at} isn't a catalog model, so it needs name, dir and match")
+      value);
   userChoices =
     {
       wallpaper = ["carousel" "engine"];
@@ -192,6 +254,8 @@
     (import ./default-apps.nix {inherit lib;}).apps
     #--- localAi.edit: none, or a model lib/local-models.nix lists
     // {"localAi.edit" = [null] ++ lib.attrNames (import ./local-models.nix).edit;}
+    #--- localAi.default: forSettings adds the machine's own; one turned off falls back
+    // {"localAi.default" = [null] ++ lib.attrNames (import ./local-models.nix).models;}
     #--- Claude Code; null leaves the setting to Claude Code
     // {
       "claude.model" = [null "opus" "sonnet" "haiku" "fable"];
@@ -265,6 +329,8 @@
       then sideRailProblems value
       else if at == ["steamGames"]
       then steamGameProblems value
+      else if at == ["localModels" "models"]
+      then localModelProblems value
       else if lib.elem dotted textSets
       then textSetProblems dotted value
       else if lib.elem dotted grouped
@@ -293,13 +359,14 @@
     if lib.isList value
     then value
     else [];
-  badLists = set:
+  #--- `lists`: listChoices with the machine's own models (forSettings)
+  badLists = lists: set:
     lib.concatLists (lib.mapAttrsToList (path: allowed: let
       wrong = lib.filter (v: !(lib.elem v allowed)) (listAt path set);
     in
       lib.optional (wrong != [])
       "`${path}` has ${builtins.toJSON wrong}; use only ${lib.concatMapStringsSep ", " builtins.toJSON allowed}")
-    listChoices)
+    lists)
     ++ lib.concatMap (path: let
       wrong = lib.filter (v: !(lib.isInt v && v >= 1 && v <= 65535)) (listAt path set);
     in
@@ -373,7 +440,26 @@ in rec {
     in
       merged
       // lib.genAttrs (grouped ++ textSets ++ ["keybinds" "windowRules" "sideRail" "steamGames"]) (key: listed.${user}.${key} or own.${key} or userDefaults.${key})
-      // {name = user;};
+      // {
+        name = user;
+        localAi = let
+          # A `models` set anywhere wins, so a model switched off in Omni stays off
+          models =
+            listed.${user}.localAi.models
+            or own.localAi.models
+            or (lib.unique ((merged.localAi.code or []) ++ (merged.localAi.chat or [])));
+        in {
+          inherit models;
+          inherit (merged.localAi) edit;
+          # A default switched off in Omni moves to the first model on
+          default =
+            if lib.elem merged.localAi.default models
+            then merged.localAi.default
+            else if models != []
+            then lib.head models
+            else null;
+        };
+      };
 
     merged = lib.recursiveUpdate machineDefaults (removeAttrs own ["users"]);
     mainUser =
@@ -402,20 +488,34 @@ in rec {
       problems machineDefaults (removeAttrs own ["users"]) []
       ++ lib.optional (names == []) "`users` is empty; list at least one, e.g. users = {alice = {};};"
       ++ map (user: "`users.${user}`: there is no ${userFile user} (run ./setup.sh add-user)") missing
-      ++ lib.concatMap (user: map (line: "in `users.${user}`: ${line}") (problems userDefaults listed.${user} [])) names
+      ++ lib.concatMap (user: map (line: "in `users.${user}`: ${line}") (problems acceptedUserKeys listed.${user} [])) names
       ++ lib.optional (mainUser == null && names != []) "several users are listed, so set mainUser to the one who owns this config"
       ++ lib.optional (mainUser != null && !(listed ? ${mainUser})) "mainUser `${toString mainUser}` is not listed in `users`"
       ++ lib.optional (!lib.isString merged.stateVersion) "set stateVersion (in quotes) to the system.stateVersion line in /etc/nixos/configuration.nix"
       ++ badChoices choices merged
-      ++ badLists merged;
+      ++ badLists lists merged;
+
+    #--- localAi.models may also pick the models this machine adds
+    lists =
+      listChoices
+      // {
+        "localAi.models" = lib.unique (listChoices."localAi.models" ++ lib.attrNames merged.localModels.models);
+      };
   in
     assert report file machineProblems;
-    assert lib.all (user: report (userFile user) (problems userDefaults (readUser user) [])) names;
+    assert lib.all (user: report (userFile user) (problems acceptedUserKeys (readUser user) [])) names;
     assert lib.all (user: let
       final = machine.users.${user};
     in
-      report (userFile user) (badChoices userChoices final
-        ++ badLists final
+      report (userFile user) (badChoices (userChoices // {"localAi.default" = [null] ++ final.localAi.models;}) final
+        # What the files say, since `final` has already fallen back: only a name no
+        # model has is an error
+        ++ map (id: "`localAi.default` is ${builtins.toJSON id}; no model has that name")
+        (lib.filter (id: !(lib.elem id ([null] ++ lists."localAi.models"))) [
+          (readUser user).localAi.default or null
+          listed.${user}.localAi.default or null
+        ])
+        ++ badLists lists final
         ++ lib.optional (builtins.match "[0-9A-Fa-f]{6}" final.mangohud.textColor == null)
         "`mangohud.textColor` is ${builtins.toJSON final.mangohud.textColor}; use six hex digits, e.g. \"00FF00\""))
     names;

@@ -45,7 +45,6 @@
     firefox = false; # Mozilla web browser
     zen = true;
     mullvad = false;
-    helium = false;
     ferdium = false; # Web messengers in one window (services set in-app)
   };
 
@@ -196,6 +195,7 @@
     tmodloader = false; # tml-prelaunch runtime patch, .NET 8 and Mono
 
     # Tools
+    omniServer = false; # Runs modded Minecraft servers, with stats and a console
     r2modman = false; # Thunderstore mod manager
     satisfactoryModManager = false; # Satisfactory mod manager
     pathOfBuilding = false; # Path of Exile build planner (Rusty PoB)
@@ -229,15 +229,13 @@
 
   #--- AI Tools
   claude.enable = false; # Claude Code (needs an Anthropic account)
-  claude.mods.ribbon = false; # Band above Claude Code's prompt: usage left, prompt cache
+  claude.mods.usageBand = false; # Band above Claude Code's prompt: usage, prompt cache
+  claude.mods.rebuildPrompt = false; # Rebuild and Restart DMS buttons on that band
   claude.mods.skins = false; # Skins: cards, tool rows and a wallpaper-coloured skin
   claude.mods.fileTree = false; # File tree sidebar (needs /tui fullscreen in a terminal)
   claude.mods.savvyProgress = false; # Progress bar and a live panel of subagents
   claude.mods.blastRadius = false; # Shows what a risky rm or git command would change
   claude.mods.replayTheater = false; # /replay steps through the last turn's edits
-  # Need BenAI's mods unzipped into ~/.local/opt/claude-mods
-  claude.mods.chatInventory = false; # Pane listing the chat's to-dos, files and tools
-  claude.mods.screenShare = false; # /screen-share hides names and emails while recording
   claude.statusLine = false; # Status line under Claude Code's prompt: context used
   claude.builtins.youShouldKnow = false; # Built-in "you should know" plugin
   claude.builtins.agentsMd = true; # Built-in plugin that reads AGENTS.md files
@@ -251,15 +249,20 @@
   opencodeDesktop.enable = false; # OpenCode's desktop app: a Claude Desktop-style GUI
   omp.enable = false; # Oh My Pi coding agent
   zcode.enable = false; # Z.ai agentic development environment
+  #--- OpenCode Plugins
+  opencode.plugins.usageBar = true; # Bars in the terminal's prompt and home footers
+  opencode.plugins.desktopBar = true; # Usage bar across the desktop app's bottom
+  opencode.plugins.rebuildBadge = true; # Desktop badge to rebuild when changes aren't built
+  pi.enable = false; # Pi: a minimal terminal coding agent, on llama-swap's models
   lmstudio.enable = false; # Runs language models locally
   llamaSwap.enable = false; # llama.cpp server on the GPU, opencode's default model
   openWebui.enable = false; # Chat with llama-swap's models in the browser
-  # Models llama-swap serves, from the names in lib/local-models.nix. Each app
-  # lists the ones turned on; the first coding model is opencode's and Zed's default
+  # Models llama-swap serves, from the names in lib/local-models.nix. Every app
+  # lists the ones turned on
   localAi = {
-    code = []; # Coding models
+    models = []; # Models turned on
+    default = null; # The apps' default model; null or one turned off is the first one on
     edit = null; # Zed's inline suggestions
-    chat = []; # Chat models
   };
 
   #--- Claude Code Settings

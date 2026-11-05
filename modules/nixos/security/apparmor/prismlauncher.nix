@@ -11,12 +11,14 @@
       abi <abi/4.0>,
       include <tunables/global>
 
-      profile prismlauncher /nix/store/*-prismlauncher-*/bin/prismlauncher flags=(attach_disconnected) {
+      profile prismlauncher /nix/store/*-prismlauncher-*/bin/prismlauncher {
         include <abstractions/nix-desktop-app>
         include <abstractions/nix-network>
 
         # Instances, mods, downloaded Java runtimes and extracted natives
         owner @{HOME}/.local/share/PrismLauncher{,/**} rwlkmix,
+        owner @{HOME}/.ysm/ rw, # Yes Steve Model extracts libysm-core here
+        owner @{HOME}/.ysm/** rwm,
         owner /tmp/** m,
         owner @{HOME}/.java{,/**} rwk,
         owner @{HOME}/.cache/JNA{,/**} rwkm,

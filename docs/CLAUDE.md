@@ -11,7 +11,7 @@ Security/privacy notes live under `docs/security/`:
 
 Beginner guides to using this setup day to day live under `docs/guide/`, shown in file name order as the Guides section of Omni Settings' Docs tab. Keep them in step when a page, button, keybind or `nixm` command they describe changes; links to repo files open in the user's text editor (`{user}` and `{machine}` stand for the login and machine):
 
-- `guide/01-start-here.md` to `guide/09-side-rail.md` — the terms, Omni Settings, installing apps, updates and versions, the desktop and keybinds, backups and git, `nixm`, recovering from a failed rebuild, and the `Mod+A` side rail
+- `guide/01-start-here.md` to `guide/10-local-models.md` — the terms, Omni Settings, installing apps, updates and versions, the desktop and keybinds, backups and git, `nixm`, recovering from a failed rebuild, the `Mod+A` side rail, and tuning local AI models on the Tuning page
 
 Game notes live under `docs/gaming/` (the `game-troubleshooting` skill indexes them; Omni Settings' Docs tab shows the top-level `gaming/*.md` notes):
 
@@ -19,7 +19,7 @@ Game notes live under `docs/gaming/` (the `game-troubleshooting` skill indexes t
 
 nixpkgs update notes live under `docs/nixpkgs/`:
 
-- `nixpkgs/disabled-packages.md` — packages switched off because a flake update broke them, with the date, the nixpkgs rev and how to tell a fix has landed. **Add a row whenever an update forces a package off, and remove it on re-enable.** The `disable-package` skill does both.
+- `nixpkgs/disabled-packages.md` — packages pinned ahead of nixpkgs (its Pinned ahead table: drop the override once nixpkgs catches up), and packages switched off because a flake update broke them, with the date, the nixpkgs rev and how to tell a fix has landed. **Add a row whenever an update forces a package off, and remove it on re-enable.** The `disable-package` skill does both.
 
 Window manager notes live under `docs/wm/`:
 
@@ -31,7 +31,7 @@ warpledge's own notes, for hardware and games only they use, live under `docs/pe
 - `personal/gaming/tmodloader-debugging.md` — tModLoader paths and log locations
 - `personal/gaming/rocksmith-2014.md` — Rocksmith 2014 on Proton 11 + WOW64 with the Katana DI via PipeASIO and RS_ASIO: the manual install steps the `gaming.rocksmith` module can't do, the Katana driver-priority stall, why calibration is skipped, which CDLC enabler build works (the CustomsForge v4.0 one, not the newer GitHub build), and the optional RSMods setup
 - `personal/gaming/feedback.md` — feedBack's working audio settings and the Guitar Pro import order (import without audio, constant offset, never auto-sync)
-- `personal/gaming/minecraft_servers/{GTNH,TerraFirmaGreg-Modern}/` — each pack has `index.md` listing its sub-files (server setup, mods, config tweaks, etc.). **Update the relevant sub-file when that pack's config, mods, or settings change.** The matching declarative modules live at `machines/legion/minecraft-servers/{gtnh-server,tfg-server}.nix` (add a new server by creating a `.nix` there, importing it in that dir's `default.nix`, and adding a line to the hardcoded pack list in `mcservers.nix`, the fzf picker that names each pack with its version and dispatches to that server's command)
+- `personal/gaming/minecraft_servers/{GTNH,TerraFirmaGreg-Modern}/` — each pack has `index.md` listing its sub-files (server setup, mods, config tweaks, etc.). GTNH splits by pack version, `GTNH/2.9.0/` for the current set; write new notes in the current version's folder. **Update the relevant sub-file when that pack's config, mods, or settings change.** The matching declarative modules live at `machines/legion/minecraft-servers/{gtnh-server,tfg-server}.nix` (add a new server by creating a `.nix` there, importing it in that dir's `default.nix`, and adding a line to the hardcoded pack list in `mcservers.nix`, the fzf picker that names each pack with its version and dispatches to that server's command)
 - `personal/audio/katana-mk2.md` — the Katana MkII as an interface: 44.1 kHz only, four fixed channels, dry DI on capture channels 3 and 4, `front:` refusing 2-channel playback, the driver-priority rule
 - `personal/android/debloat/Lenovo-Idea-Tab-Pro/` — `index.md` (full redo procedure: never-remove list, install-replacements-first ordering, PMS flush, reboot test, privacy settings) + `removal-list.txt` (the 131 verified-safe packages). **A ZUI OTA restores every stock package, so this gets redone after each system update** with the `android-debloat-redo` skill.
 - `personal/local/local-binary-installs.md` — the `~/.local/opt` wrapper pattern for prebuilt third-party bundles kept out of git; restore steps for fresh installs / the laptop. **Add an entry here for each new local app.**

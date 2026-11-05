@@ -21,8 +21,10 @@ WINDOW_RULES = ("windowRules",)
 TEXT_SETS = {("env",), ("mimeTypes",)}
 SIDE_RAIL = ("sideRail",)
 STEAM_GAMES = ("steamGames",)
+#--- A machine's per-model tuning and added models (lib/local-ai.nix)
+LOCAL_MODELS = ("localModels", "models")
 GROUPED = {("userPackages",), ("autostart",), *TEXT_SETS, KEYBINDS, WINDOW_RULES, SIDE_RAIL,
-           STEAM_GAMES}
+           STEAM_GAMES, LOCAL_MODELS}
 
 #--- Template sections whose `#---` headers each get their own page
 SPLIT_SECTIONS = {"Apps"}
@@ -49,11 +51,12 @@ MOVES = {  # setting -> (page, group on that page)
 }
 
 #--- Sidebar sections, top to bottom; under niri, Desktop is on the Niri tab, and
-#--- the AI, Network and Security sections are always on their own tabs (api.py's
-#--- SECTION_TAB), untitled since each is its tab's only one
+#--- the OpenCode, Claude and Local AI sections share the AI tab (api.py's
+#--- SECTION_TAB), with Network and Security on tabs of their own, untitled since
+#--- each is its tab's only one
 SECTIONS = [("computer", "This Computer"), ("desktop", "Desktop"),
             ("personal", "Personal"), ("apps", "Default Packages"),
-            ("cloudai", "Cloud AI"), ("localai", "Local AI"),
+            ("opencode", "OpenCode"), ("cloudai", "Claude"), ("localai", "Local AI"),
             ("network", ""), ("security", "")]
 
 #--- Each page's sidebar section, icon and blurb, and for the curated ones
@@ -61,11 +64,12 @@ SECTIONS = [("computer", "This Computer"), ("desktop", "Desktop"),
 #--- section keep the template's groups; "top" pages are settings a custom page
 #--- lays out (TOP_PAGES), the "userpkgs" one the list the Packages tab's
 #--- pages edit (UserPackagesPage.qml), "keybinds" the Keybinds page's set,
-#--- "windowrules" the Window Rules page's, "siderail" the Side Rail page's and
-#--- "games" the Games page's.
+#--- "windowrules" the Window Rules page's, "siderail" the Side Rail page's,
+#--- "games" the Games page's and "localmodels" the Tuning page's, which
+#--- the AI tab lists after Server (api.py's nav).
 #--- "top" pages: the custom page (its id in api.py and OmniView.qml) each one's settings show on
 TOP_PAGES = {"Flatpaks": "flatpaks", "Users": "people", "Battery": "battery", "MangoHud": "mangohud",
-             "AppArmor": "apparmor"}
+             "AppArmor": "apparmor", "Face Auth": "faceauth", "Maintenance": "overview"}
 
 PAGES = {
     "Flatpaks": ("top", "system-software-install-symbolic", "", [("", "", ["flatpak.enable"])]),
@@ -77,12 +81,19 @@ PAGES = {
                   ("Looks", "", ["mangohud.position", "mangohud.fontSize", "mangohud.textColor",
                                  "mangohud.background"])]),
     "AppArmor": ("top", "security-high-symbolic", "", [("", "", ["apparmor.enforce"])]),
+    "Maintenance": ("top", "computer-symbolic", "",
+                    [("Schedule", "What runs on its own, and how often.",
+                      ["maintenance.clean", "maintenance.keepDays", "maintenance.keepGenerations",
+                       "maintenance.optimise", "maintenance.updateReminderDays"])]),
     "Run on dGPU": ("dgpu", "video-display-symbolic", "", [("", "", ["gpuOffload"])]),
     "User Packages": ("userpkgs", "package-x-generic-symbolic", "", [("", "", ["userPackages"])]),
     "Keybinds": ("keybinds", "input-keyboard-symbolic", "", [("", "", ["keybinds"])]),
     "Window Rules": ("windowrules", "focus-windows-symbolic", "", [("", "", ["windowRules"])]),
     "Side Rail": ("siderail", "view-dual-symbolic", "", [("", "", ["sideRail"])]),
     "Games": ("games", "input-gaming-symbolic", "", [("", "", ["steamGames"])]),
+    "Tuning": ("localmodels", "applications-engineering-symbolic", "",
+                     [("", "", ["localModels.profile", "localModels.backend", "localModels.gpuSharedGB",
+                                "localModels.models"])]),
     "System": ("computer", "computer-symbolic",
                "This computer's name, desktop and kernel.",
                [("", "", ["hostName", "windowManager", "kernel"])]),
@@ -119,6 +130,8 @@ PAGES = {
     "Antivirus": ("security", "security-medium-symbolic",
                   "Scanning files for viruses.",
                   [("", "", ["clamav.enable"])]),
+    "Face Auth": ("top", "camera-web-symbolic", "",
+                  [("", "", ["faceAuth.enable", "faceAuth.device", "faceAuth.darkThreshold"])]),
     "Services": ("computer", "network-server-symbolic",
                  "Background services for everyone here.",
                  [("Sharing & Streaming", "", ["syncthing.enable", "suwayomi.enable"]),
@@ -166,68 +179,76 @@ PAGES = {
     "Dev": ("apps", "applications-engineering-symbolic", "Programming languages and developer tools.", None),
     "Gaming": ("apps", "applications-games-symbolic", "Launchers, games and gaming tools.", None),
     "Discord": ("apps", "user-available-symbolic", "Discord and showing what you play.", None),
+    "AI": ("apps", "applications-science-symbolic", "Coding agents and local model apps.",
+           [("", "", ["claude.enable", "claudeDesktop.enable", "chatgpt.enable", "codex.enable",
+                      "mimo.enable", "opencode.enable", "opencodeDesktop.enable", "omp.enable",
+                      "zcode.enable", "pi.enable", "lmstudio.enable"])]),
     "Claude": ("cloudai", "applications-science-symbolic",
-                  "Anthropic's Claude, signed in with your Claude account.",
-               [("", "", ["claude.enable", "claudeDesktop.enable", "claudeDesktop.matugen"]),
+               "Anthropic's Claude, signed in with your Claude account.",
+               [("", "", ["claudeDesktop.matugen"]),
                 ("Claude Code", "Changes made in Claude Code stay until set here.",
                  ["claude.model", "claude.effort", "claude.outputStyle", "claude.builtins.agentsMd",
                   "claude.builtins.agentsMdFiles"]),
-                ("Mods", "", ["claude.mods.ribbon", "claude.mods.skins",
+                ("Mods", "", ["claude.mods.usageBand", "claude.mods.rebuildPrompt",
+                              "claude.mods.skins",
                               "claude.mods.fileTree", "claude.mods.savvyProgress",
                               "claude.mods.blastRadius", "claude.mods.replayTheater",
-                              "claude.mods.chatInventory", "claude.mods.screenShare",
-                               "claude.statusLine", "claude.builtins.youShouldKnow"])]),
+                              "claude.statusLine", "claude.builtins.youShouldKnow"])]),
     "ChatGPT & Codex": ("cloudai", "applications-science-symbolic",
-                         "OpenAI's desktop app and coding agent.",
-                         [("", "", ["chatgpt.enable", "codex.enable"])]),
-    "Claude Tools": ("cloudai", "application-x-addon-symbolic",
-                     "Plugins, MCP servers and claude.ai connectors Claude Code loads.",
-                     [("Plugins", "", [f"claude.plugins.{n}" for n in (
-                         "claudeMdManagement", "skillCreator", "claudeCodeSetup", "claudeSecurity")]),
-                      ("MCP Servers", "Shared with OpenCode.", [f"claude.mcp.{n}" for n in (
-                          "nixos", "context7", "github", "deepwiki", "grep")]),
-                      ("claude.ai Connectors", "One turned off is blocked by name.", [f"claude.connectors.{n}" for n in (
-                           "gmail", "googleCalendar", "googleDrive", "claudeDocs")])]),
-    "Claude Skills": ("cloudai", "view-list-symbolic",
-                      "What Claude sees of each skill and subagent, and the model it runs on.",
-                      [("Repo Skills", "", [f"claude.skills.{n}" for n in (
-                          "addApp", "androidDebloatRedo", "apparmorCheck", "commit", "disablePackage",
-                          "flakeUpdate", "freetubeSync", "gameTroubleshooting", "handoff", "mokuBump",
-                          "onboard", "prReview", "rpgmSetup", "todo", "upstream", "vnSetup",
-                          "kurigramTelegramBot", "telegramCustomEmojiRefiner")]),
-                       ("Subagents", "", [f"claude.agents.{n}" for n in (
-                           "buildTriager", "docsDriftAuditor", "proseReviewer", "publicRepoAuditor")]),
-                       ("Account Skills", "Synced from your claude.ai account.",
-                        [f"claude.accountSkills.{n}" for n in (
-                            "builtInBrowser", "chromeBrowser", "computerUse", "deepResearch", "docs",
-                            "docx", "googleWorkspace", "importMemory", "mcpBuilder", "morning", "pdf",
-                            "pptx", "xlsx")])]),
-    "OpenCode": ("cloudai", "vcs-branch-symbolic",
-                 "OpenCode, the coding agent, in the terminal and as a desktop app.",
-                 [("", "", ["opencode.enable", "opencodeDesktop.enable"])]),
+                        "OpenAI's desktop app and coding agent.",
+                        [("", "", ["chatgpt.enable", "codex.enable"])]),
     "OMP": ("cloudai", "utilities-terminal-symbolic", "Oh My Pi coding agent for the terminal.",
             [("", "", ["omp.enable"])]),
     "MiMo Code": ("cloudai", "utilities-terminal-symbolic", "Coding agent with cross-session memory.",
                   [("", "", ["mimo.enable"])]),
     "ZCode": ("cloudai", "applications-engineering-symbolic", "Z.ai agentic development environment.",
               [("", "", ["zcode.enable"])]),
-    "Tools": ("localai", "utilities-terminal-symbolic",
-              "The local model server and the app that downloads models.",
-              [("", "", ["llamaSwap.enable", "lmstudio.enable", "openWebui.enable"])]),
+    "Tools": ("cloudai", "application-x-addon-symbolic",
+              "Plugins, MCP servers and claude.ai connectors Claude Code loads.",
+              [("Plugins", "", [f"claude.plugins.{n}" for n in (
+                  "claudeMdManagement", "skillCreator", "claudeCodeSetup", "claudeSecurity")]),
+               ("MCP Servers", "Shared with OpenCode.", [f"claude.mcp.{n}" for n in (
+                   "nixos", "context7", "github", "deepwiki", "grep")]),
+               ("claude.ai Connectors", "One turned off is blocked by name.", [f"claude.connectors.{n}" for n in (
+                    "gmail", "googleCalendar", "googleDrive", "claudeDocs")])]),
+    "Skills": ("cloudai", "view-list-symbolic",
+               "What Claude sees of each skill and subagent, and the model it runs on.",
+               [("Repo Skills", "", [f"claude.skills.{n}" for n in (
+                   "addApp", "androidDebloatRedo", "apparmorCheck", "commit", "disablePackage",
+                   "flakeUpdate", "freetubeSync", "gameTroubleshooting", "handoff", "mokuBump",
+                   "onboard", "prReview", "rpgmSetup", "todo", "upstream", "vnSetup",
+                   "kurigramTelegramBot", "telegramCustomEmojiRefiner")]),
+                ("Subagents", "", [f"claude.agents.{n}" for n in (
+                    "buildTriager", "docsDriftAuditor", "proseReviewer", "publicRepoAuditor")]),
+                ("Account Skills", "Synced from your claude.ai account.",
+                 [f"claude.accountSkills.{n}" for n in (
+                     "builtInBrowser", "chromeBrowser", "computerUse", "deepResearch", "docs",
+                     "docx", "googleWorkspace", "importMemory", "mcpBuilder", "morning", "pdf",
+                     "pptx", "xlsx")])]),
+    "Plugins": ("opencode", "application-x-addon-symbolic",
+                "OpenCode's plugin: usage bars and the desktop app's rebuild badge.",
+                [("", "", ["opencode.plugins.usageBar", "opencode.plugins.desktopBar",
+                           "opencode.plugins.rebuildBadge"])]),
+    "Server": ("localai", "utilities-terminal-symbolic",
+               "The local model server and its chat page.",
+               [("", "", ["llamaSwap.enable", "openWebui.enable"])]),
     "Models": ("localai", "applications-engineering-symbolic",
-               "The models llama-swap runs on this computer, one at a time.",
-               [("Code", "For opencode and Zed's agent panel.", ["localAi.code"]),
-                ("Chat", "For Open WebUI and llama-swap's Playground.", ["localAi.chat"]),
+               "The models opencode, Zed, Pi and Open WebUI can use, one at a time.",
+               [("Models", "The ones opencode, Zed, Pi and Open WebUI can use.",
+                 ["localAi.models"]),
+                ("Default", "The model the apps start with.", ["localAi.default"]),
                 ("Inline Suggestions", "Zed's suggestions as you type, on the CPU.", ["localAi.edit"])]),
 }
 
 #--- (page, group) shown closed until its heading is clicked, and its heading's icon
 COLLAPSED = {("Claude", "Mods"): "brush",
-             ("Claude Tools", "Plugins"): "extension", ("Claude Tools", "MCP Servers"): "hub",
-             ("Claude Tools", "claude.ai Connectors"): "cable",
-             ("Claude Skills", "Repo Skills"): "construction",
-             ("Claude Skills", "Subagents"): "smart_toy",
-             ("Claude Skills", "Account Skills"): "cloud"}
+             ("Tools", "Plugins"): "extension", ("Tools", "MCP Servers"): "hub",
+             ("Tools", "claude.ai Connectors"): "cable",
+             ("Skills", "Repo Skills"): "construction",
+             ("Skills", "Subagents"): "smart_toy",
+             ("Skills", "Account Skills"): "cloud"}
+#--- COLLAPSED groups of switches shown as on/off chips instead of rows
+CHIPS = {("Claude", "Mods")}
 
 #--- Settings shown inside another's row, by path prefix: claude.skills.commit's row
 #--- also edits claude.skillModels.commit (pair_up)
@@ -235,26 +256,14 @@ PAIRS = {("claude", "skills"): ("claude", "skillModels"),
          ("claude", "agents"): ("claude", "agentModels")}
 
 #--- List and none-or-one settings shown as one switch per model, straight in their group
-SWITCH_LISTS = {"localAi.code", "localAi.chat", "localAi.edit"}
+SWITCH_LISTS = {"localAi.models", "localAi.edit"}
 
 #--- Text shown above a page's groups, with descriptions.json's ** and !! marks
 PAGE_INTROS = {
-    "Models": "Download a model in **LM Studio** (turn it on under Tools) before turning it on "
-              "here: open its **Discover** tab, search for the repo, pick the named file from the "
-              "download options and download it. llama-swap finds it in ~/.lmstudio/models, so it "
-              "doesn't need loading in LM Studio.\n\n"
-              "Code\n"
-              "1. **Ornith 1.5 35B A3B**: ornith-ai/Ornith-1.5-35B-A3B-GGUF, the Q4_K_M file "
-              "(~23 GB)\n"
-              "2. **Qwen3.6 35B A3B (Q4)**: unsloth/Qwen3.6-35B-A3B-GGUF, the UD-Q4_K_XL file "
-              "(~21 GB)\n\n"
-              "Chat\n"
-              "3. **gpt-oss 20B**: ggml-org/gpt-oss-20b-GGUF (~13 GB)\n"
-              "4. **Gemma 4 26B A4B**: unsloth/gemma-4-26B-A4B-it-qat-GGUF, the UD-Q4_K_XL file "
-              "(~14 GB)\n\n"
-              "Inline Suggestions\n"
-              "5. **Sweep Next-Edit 1.5B**: sweepai/sweep-next-edit-1.5B\n"
-              "6. **Qwen2.5 Coder 1.5B**: ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF\n\n"
+    "Models": "Download a model in **LM Studio** (turn it on under Server) before turning it on "
+              "here: open its **Discover** tab, search for it, pick the file from the download "
+              "options and download it. llama-swap finds it in ~/.lmstudio/models, so it doesn't "
+              "need loading in LM Studio.\n\n"
               "!!Without the file, an app gets an error the first time it uses the model.!!",
 }
 FALLBACK_ICON = "applications-system-symbolic"
@@ -463,6 +472,8 @@ def make_setting(domain, path, b, values, choices, labels, doc, lead, header_tit
         s.kind = "siderail"
     elif path == STEAM_GAMES:
         s.kind = "steamgames"
+    elif path == LOCAL_MODELS:
+        s.kind = "localmodels"
     elif path in GROUPED:
         s.kind = "groups"
     elif isinstance(value, list):
